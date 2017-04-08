@@ -19,12 +19,12 @@ def log_info(func):
     def wrapper(args):
         print("Function {} called with the following arguments:\n".format(func.__name__))
         for arg in vars(args):
-            print(arg, getattr(args, arg))
+            print(str(arg) + '\t' + str(getattr(args, arg)))
         t1 = time.time()
         func(args)
         t2 = time.time()
         elapsed = [round(x, 2) for x in divmod(t2-t1, 60)]
-        print("Function completed in  {} m {} s\n".format(elapsed[0], elapsed[1]))
+        print("\nFunction completed in  {} m {} s\n".format(elapsed[0], elapsed[1]))
     return wrapper
 
 
@@ -81,21 +81,22 @@ def find_chromosome_break(position, chromosomes, current_chrom):
         return find_chromosome_break(position, chromosomes, current_chrom + 1)
     
 
-def iterate_reads(intervals, options, cb):
-    inputBam = pysam.AlignmentFile(options.bam, 'rb')
+def iterate_reads(intervals, bam, sam, output, cb):
+    inputBam = pysam.AlignmentFile(bam, 'rb')
     ident = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     if sam:
-        outputBam = pysam.AlignmentFile(options.output + ident, "w", template=inputBam)
+        outputBam = pysam.AlignmentFile(output + ident, "w", template=inputBam)
     else:
-        outputBam = pysam.AlignmentFile(options.output + ident, 'wb', template=inputBam)
+        outputBam = pysam.AlignmentFile(output + ident, 'wb', template=inputBam)
     for i in intervals:
         for r in inputBam.fetch(i[0], i[1], i[2]):
             cell_barcode, _ = scan_tags(r.tags)
-            if cell_barcode in cb:
-                outputBam.write(r)
+            if cell_barcode is not None:
+                if cell_barcode[:-2] in cb:
+                    outputBam.write(r)
     outputBam.close()
     inputBam.close()
-    return outfile + ident
+    return output + ident
 
 
 def read_snps(snps):
@@ -133,7 +134,7 @@ def scan_tags(tags):
             umi = tag[1]
         else:
             pass
-    return(cell_barcode, umi)
+    return cell_barcode, umi
 
 
 def get_genotype(read, ref_position, snp_position, cigar_tuple):
@@ -326,7 +327,7 @@ def countsnps(options):
 
 
 @log_info
-def filterbarcode(options):
+def filterbarcodes(options):
     """Filter reads based on input list of cell barcodes"""
     nproc = int(options.nproc)
     # read the cell barcodes file
@@ -340,20 +341,20 @@ def filterbarcode(options):
     # get list of genomic intervals
     intervals = chunk_bam(inputBam, nproc)
     inputBam.close()
-    
+
     p = Pool(nproc)
 
     # map chunks to cores
     tempfiles = p.map_async(functools.partial(iterate_reads,
-                            options=option,
+                            bam=options.bam, sam=options.sam, output=options.output,
                             cb=cb), intervals.values()).get(9999999)
 
     # merge the temporary bam files
-    mergestring = 'samtools merge -@ ' + str(nproc) + ' ' + outfile + ' ' + ' '.join(tempfiles)
+    mergestring = 'samtools merge -@ ' + str(nproc) + ' ' + options.output + ' ' + ' '.join(tempfiles)
     call(mergestring, shell=True)
 
     # remove temp files if merged
-    if os.path.exists(outfile):
+    if os.path.exists(options.output):
         [os.remove(i) for i in tempfiles]
     else:
         raise Exception("samtools merge failed, temp files not deleted")
@@ -374,14 +375,14 @@ if __name__ == "__main__":
     parser_filterbarcodes.add_argument('-o', '--output', help='Name for output text file', required=True)
     parser_filterbarcodes.add_argument('-s', '--sam', help='Output sam format (default bam output)', required=False, action='store_true', default=False)
     parser_filterbarcodes.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
-    parser_filterbarcodes.set_defaults(func=filterbarcode)
+    parser_filterbarcodes.set_defaults(func=filterbarcodes)
 
     # countsnps
     parser_countsnps = subparsers.add_parser('countsnps', description='Count reference and alternate SNPs per cell in single-cell RNA data')
     parser_countsnps.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
     parser_countsnps.add_argument('-s', '--snp', help='File with SNPs. Needs chromosome, position, reference, alternate as first four columns', required=True)
     parser_countsnps.add_argument('-o', '--output', help='Name for output text file', required=True)
-    parser_countsnps.add_argument('-c', '--cells', help='File containing cell barcodes', required=False)
+    parser_countsnps.add_argument('-c', '--cells', help='File containing cell barcodes to count SNPs for. Can be gzip compressed (optional)', required=False)
     parser_countsnps.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
     parser_countsnps.set_defaults(func=countsnps)
 
