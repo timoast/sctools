@@ -41,7 +41,7 @@ optional arguments:
 ### Filter barcodes
 
 If you want to extract reads from a subset of cell barcodes, you can
-do so using the `sctools filterbarcodes` command.
+do so using the `sctools.py filterbarcodes` command.
 
 ```
 $ sctools.py filterbarcodes -h
