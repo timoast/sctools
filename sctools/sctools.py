@@ -13,6 +13,7 @@ import string
 from glob import glob
 import os
 import time
+from subprocess import call
 
 
 def log_info(func):
@@ -70,8 +71,7 @@ def add_start_coords(intervals, chrom_lengths, bamfile):
             d[x].append((bamfile.get_reference_name(i[2] -1), 0, i[3]))
     return(d)
             
-
-                    
+            
 def find_chromosome_break(position, chromosomes, current_chrom):
     assert position <= sum(chromosomes), "position past end of genome"
     if position <= chromosomes[current_chrom]:
