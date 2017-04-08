@@ -18,8 +18,8 @@ import time
 def log_info(func):
     def wrapper(args):
         print("Function {} called with the following arguments:\n".format(func.__name__))
-        for arg in vars(options):
-            print arg, getattr(options, arg)
+        for arg in vars(args):
+            print arg, getattr(args, arg)
         t1 = time.time()
         func(args)
         t2 = time.time()
