@@ -1,0 +1,11 @@
+*.swp
+*.pyc
+.DS_Store
+._*
+build/
+dist/
+sctools.egg-info/
+.gitattributes
+.eggs/
+.gitattributes
+versioneer.py
