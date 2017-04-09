@@ -17,6 +17,7 @@ from subprocess import call
 
 
 def log_info(func):
+    @functools.wraps(func)
     def wrapper(args):
         print("Function {} called with the following arguments:\n".format(func.__name__))
         for arg in vars(args):
