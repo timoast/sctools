@@ -3,10 +3,14 @@
 from setuptools import setup
 import versioneer
 import subprocess
+import sys
 
 
 def samtools():
-    v = subprocess.check_output(['samtools', '--version']).split()[1].split('.')
+    if (sys.version_info > (3, 0)):
+        v = subprocess.check_output(['samtools', '--version']).decode().split()[1].split('.')
+    else:
+        v = subprocess.check_output(['samtools', '--version']).split()[1].split('.')
     major = int(v[0])
     minor = int(v[1])
     if major > 0.8:
