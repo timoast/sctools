@@ -62,3 +62,28 @@ optional arguments:
                         Number of processors (default = 1)
 ```
 
+### Count edited transcripts
+
+Edited RNA transcripts can be counted per editing position per cell using the `sctools countedited` command.
+
+```
+$ sctools.py countedited -h    [master]
+usage: sctools.py countedited [-h] -b BAM -e EDIT -o OUTPUT [-c CELLS]
+                              [-p NPROC]
+
+Count edited transcripts per gene per cell in single-cell RNA data. Output is
+a matrix of positions by cells.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BAM, --bam BAM     Input bam file (must be indexed)
+  -e EDIT, --edit EDIT  File with edited base coordinates. Needs chromosome,
+                        position, reference, alternate as first four columns
+  -o OUTPUT, --output OUTPUT
+                        Name for output text file
+  -c CELLS, --cells CELLS
+                        File containing cell barcodes to count edited bases
+                        for. Can be gzip compressed (optional)
+  -p NPROC, --nproc NPROC
+                        Number of processors (default = 1)
+```
