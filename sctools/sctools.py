@@ -200,25 +200,6 @@ def add_genotype(cell_genotypes, cell_barcode, umi, genotype):
     return cell_genotypes
 
 
-def add_edit_count(edit_counts, position_index, umi, edit_base):
-    """
-    Append edit information for cell and UMI to dictionary
-    return modified edit_counts dictionary
-    """
-    try:
-        edit_counts[position_index]
-    except KeyError:
-        # haven't seen the cell, must be new UMI
-        edit_counts[position_index] = [{umi: [edit_base]}]
-    else:
-        try:
-            edit_counts[position_index][umi]
-        except KeyError:
-            edit_counts[position_index][umi] = [edit_base]
-        else:
-            edit_counts[position_index][umi].append(edit_base)
-    return edit_counts
-
 def chunk(seq, num):
     """
     cut list into n chunks
@@ -344,9 +325,9 @@ def count_edit_percent_at_postion(edit_chunk, bam, known_cells):
                 if known_cells is None or cell_barcode in known_cells:
                     transcript_base = get_genotype(read.query_sequence, read.pos, position, read.cigar)
                     if transcript_base == ref:
-                        edit_counts = add_edit_count(edit_counts, position_cell_index, umi, "ref")
+                        edit_counts = add_genotype(edit_counts, position_cell_index, umi, "ref")
                     elif transcript_base == alt:
-                        edit_counts = add_edit_count(edit_counts, position_cell_index, umi, "alt")
+                        edit_counts = add_genotype(edit_counts, position_cell_index, umi, "alt")
     collapsed_umi = collapse_umi(edit_counts)
     bamfile.close()
     if None in collapsed_umi.keys():
