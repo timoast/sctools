@@ -200,6 +200,25 @@ def add_genotype(cell_genotypes, cell_barcode, umi, genotype):
     return cell_genotypes
 
 
+def add_edit_count(edit_counts, position_index, umi, edit_base):
+    """
+    Append edit information for cell and UMI to dictionary
+    return modified edit_counts dictionary
+    """
+    try:
+        edit_counts[position_index]
+    except KeyError:
+        # haven't seen the cell, must be new UMI
+        edit_counts[position_index] = [{umi: [edit_base]}]
+    else:
+        try:
+            edit_counts[position_index][umi]
+        except KeyError:
+            edit_counts[position_index][umi] = [edit_base]
+        else:
+            edit_counts[position_index][umi].append(edit_base)
+    return edit_counts
+
 def chunk(seq, num):
     """
     cut list into n chunks
@@ -262,6 +281,8 @@ def genotype_cells(bam, snps, cells, nproc):
     return merged_data
 
 
+
+
 def merge_thread_output(data):
     """
     merge multiple dictionaries of the same format into one
@@ -306,11 +327,110 @@ def genotype_snps(snp_chunk, bam, known_cells):
     return collapsed_umi
 
 
+def count_edit_percent_at_postion(edit_chunk, bam, known_cells):
+    bamfile = pysam.AlignmentFile(bam, 'rb')
+    edit_counts = {} # key = cell barcode and position, value  = UMI counts
+    for i in edit_chunk:
+        chromosome, position, ref, alt = i[0], i[1], i[2], i[3]
+        # get all the reads that intersect with the snp from the bam file
+        try:
+            bamfile.fetch(chromosome, position, position + 1)
+        except ValueError:
+            pass
+        else:
+            for read in bamfile.fetch(chromosome, position, position + 1):
+                cell_barcode, umi = scan_tags(read.tags)
+                position_cell_index = str(cell_barcode)+":"+str(chromosome)+","+str(postion)
+                if known_cells is None or cell_barcode in known_cells:
+                    transcript_base = get_genotype(read.query_sequence, read.pos, position, read.cigar)
+                    if transcript_base == ref:
+                        edit_counts = add_edit_count(edit_counts, position_cell_index, umi, "ref")
+                    elif transcript_base == alt:
+                        edit_counts = add_edit_count(edit_counts, position_cell_index, umi, "alt")
+    collapsed_umi = collapse_umi(edit_counts)
+    bamfile.close()
+    if None in collapsed_umi.keys():
+        collapsed_umi.pop(None)
+    else:
+        pass
+    return collapsed_umi
+
+
 def save_data(data, filename):
+    """
+    Save table of snp counts
+    """
     with open(filename, "w+") as outfile:
         outfile.write("cell_barcode\treference_count\talternate_count\n")
         for key, value in data.items():
             outfile.write(key + "\t" + str(value[0]) + "\t" + str(value[1]) + "\n")
+
+
+def save_edit_data(data, filename):
+    """
+    Save matrix of edit counts
+    """
+    cell_barcodes = [i.split(':', 1)[0] for i in data.keys()]
+    coordinates = [i.split(':', 1)[1] for i in data.keys()]
+    # initialize new dictionary
+    mat = {}
+    for i in cell_barcodes:
+        mat[i] = {}
+
+    for key, value in data.items():
+        cb = key.split(':')[0]
+        pos = key.split(':')[1]
+        mat[cb][pos] = value
+
+    with open(filename, "w+") as outfile:
+        outfile.write('postion\t'+'\t'.join(cell_barcodes)+'\n')
+        for i in coordinates: # rows
+            outfile.write(i)
+            for j in cell_barcodes: # columns
+                try:
+                    mat[j][i]
+                except KeyError:
+                    outfile.write('\t.')
+                else:
+                    outfile.write('\t'+str(mat[j][i]))
+            outfile.write('\n')
+
+
+def edited_transcripts(bam, edit_base, cells, nproc):
+    """
+    Input 10x bam file and SNP coordinates with ref/alt base
+    Return each cell barcode with genotype prediction
+    """
+    edit_set = read_snps(edit_base)
+    if cells is not None:
+        if cells.endswith(".gz"):
+            known_cells = [line.strip("\n") for line in gzip.open(cells, "b")]
+        else:
+            known_cells = [line.strip("\n") for line in open(cells, "r")]
+    else:
+        known_cells = None
+    p = Pool(int(nproc))
+    edit_chunks = chunk(edit_set, nproc)
+    data = p.map_async(functools.partial(count_edit_percent_at_postion,
+                                   bam=bam,
+                                   known_cells=known_cells),                                   
+                 edit_chunks).get(9999999)
+    merged_data = merge_thread_output(data)
+    return merged_data
+
+
+@log_info
+def countedited(options):
+    """Count reference and alternate SNPs per cell in single-cell RNA data"""
+    bamfile = pysam.AlignmentFile(options.bam)
+    if bamfile.has_index() is True:
+        bamfile.close()
+        data = edited_transcripts(options.bam, options.edit, options.cells, options.nproc)
+        save_edit_data(data, options.output)
+    else:
+        bamfile.close()
+        print("bam file not indexed")
+        exit()
 
 
 @log_info
@@ -386,6 +506,15 @@ if __name__ == "__main__":
     parser_countsnps.add_argument('-c', '--cells', help='File containing cell barcodes to count SNPs for. Can be gzip compressed (optional)', required=False)
     parser_countsnps.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
     parser_countsnps.set_defaults(func=countsnps)
+
+    # countedited
+    parser_countedited = subparsers.add_parser('countedited', description='Count edited transcripts per gene per cell in single-cell RNA data. Output is a matrix of positions by cells.')
+    parser_countedited.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
+    parser_countedited.add_argument('-e', '--edit', help='File with edited base coordinates. Needs chromosome, position, reference, alternate as first four columns', required=True)
+    parser_countedited.add_argument('-o', '--output', help='Name for output text file', required=True)
+    parser_countedited.add_argument('-c', '--cells', help='File containing cell barcodes to count edited bases for. Can be gzip compressed (optional)', required=False)
+    parser_countedited.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
+    parser_countedited.set_defaults(func=countedited)
 
     options = parser.parse_args()
     options.func(options)
