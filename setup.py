@@ -13,7 +13,7 @@ def samtools():
         v = subprocess.check_output(['samtools', '--version']).split()[1].split('.')
     major = int(v[0])
     minor = int(v[1])
-    if major > 1:
+    if major >= 1:
         return True
     return False
 
