@@ -432,11 +432,14 @@ def countsnps(options):
 def filterbarcodes(options):
     """Filter reads based on input list of cell barcodes"""
     nproc = int(options.nproc)
-    # read the cell barcodes file
-    if options.cells.endswith(".gz"):
-        cb = [line.strip("\n") for line in gzip.open(options.cells, "b")]
+    # check if cell barcodes option is a file
+    if os.path.isfile(options.cells):
+        if options.cells.endswith(".gz"):
+            cb = [line.strip("\n") for line in gzip.open(options.cells, "b")]
+        else:
+            cb = [line.strip("\n") for line in open(options.cells, "r")]
     else:
-        cb = [line.strip("\n") for line in open(options.cells, "r")]
+        cb = options.cells.split(",")
 
     inputBam = pysam.AlignmentFile(options.bam, 'rb')
     
@@ -473,7 +476,7 @@ if __name__ == "__main__":
     # filterbarcodes
     parser_filterbarcodes = subparsers.add_parser('filterbarcodes', description='Filter reads based on input list of cell barcodes')
     parser_filterbarcodes.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
-    parser_filterbarcodes.add_argument('-c', '--cells', help='File containing cell barcodes. Can be gzip compressed', required=True)
+    parser_filterbarcodes.add_argument('-c', '--cells', help='File or comma-separated list of cell barcodes. Can be gzip compressed', required=True)
     parser_filterbarcodes.add_argument('-o', '--output', help='Name for output text file', required=True)
     parser_filterbarcodes.add_argument('-s', '--sam', help='Output sam format (default bam output)', required=False, action='store_true', default=False)
     parser_filterbarcodes.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
@@ -484,7 +487,7 @@ if __name__ == "__main__":
     parser_countsnps.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
     parser_countsnps.add_argument('-s', '--snp', help='File with SNPs. Needs chromosome, position, reference, alternate as first four columns', required=True)
     parser_countsnps.add_argument('-o', '--output', help='Name for output text file', required=True)
-    parser_countsnps.add_argument('-c', '--cells', help='File containing cell barcodes to count SNPs for. Can be gzip compressed (optional)', required=False)
+    parser_countsnps.add_argument('-c', '--cells', help='File or comma-separated list of cell barcodes to count SNPs for. Can be gzip compressed (optional)', required=False)
     parser_countsnps.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
     parser_countsnps.set_defaults(func=countsnps)
 
