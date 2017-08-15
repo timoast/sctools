@@ -53,7 +53,7 @@ def add_start_coords(intervals, chrom_lengths, bamfile):
 
     # now get start stop postions for all intervals
     ranges = [intervals[x-1] + intervals[x] for x in range(1, len(intervals))]
-    
+
     # populate dictonary of genomic intervals
     # each key is a list of ranges
     # one key = one process
@@ -71,8 +71,8 @@ def add_start_coords(intervals, chrom_lengths, bamfile):
             # now record the last bit
             d[x].append((bamfile.get_reference_name(i[2] -1), 0, i[3]))
     return(d)
-            
-            
+
+
 def find_chromosome_break(position, chromosomes, current_chrom):
     assert position <= sum(chromosomes), "position past end of genome"
     if position <= chromosomes[current_chrom]:
@@ -80,7 +80,7 @@ def find_chromosome_break(position, chromosomes, current_chrom):
     else:
         position = position - chromosomes[current_chrom]
         return find_chromosome_break(position, chromosomes, current_chrom + 1)
-    
+
 
 def iterate_reads(intervals, bam, sam, output, cb):
     inputBam = pysam.AlignmentFile(bam, 'rb')
@@ -149,7 +149,7 @@ def get_genotype(read, ref_position, snp_position, cigar_tuple):
         2: ["D", 1, 0], # deletion, progress reference not read
         3: ["N", 1, 0], # skipped, progress reference not read
         4: ["S", 0, 1], # soft clipped, progress read not reference
-        5: ["H", 0, 1], # hard clipped, progress read not reference
+        5: ["H", 0, 0], # hard clipped, progress neither
         6: ["P", 0, 0], # padded, do nothing (not used)
         7: ["=", 1, 1], # match, progress both
         8: ["X", 1, 1]  # mismatch, progress both
@@ -256,7 +256,7 @@ def genotype_cells(bam, snps, cells, nproc):
     snp_chunks = chunk(snp_set, nproc)
     data = p.map_async(functools.partial(genotype_snps,
                                    bam=bam,
-                                   known_cells=known_cells),                                   
+                                   known_cells=known_cells),
                  snp_chunks).get(9999999)
     merged_data = merge_thread_output(data)
     return merged_data
@@ -394,7 +394,7 @@ def edited_transcripts(bam, edit_base, cells, nproc):
     edit_chunks = chunk(edit_set, nproc)
     data = p.map_async(functools.partial(count_edit_percent_at_postion,
                                    bam=bam,
-                                   known_cells=known_cells),                                   
+                                   known_cells=known_cells),
                  edit_chunks).get(9999999)
     merged_data = merge_thread_output(data)
     return merged_data
@@ -442,7 +442,7 @@ def filterbarcodes(options):
         cb = options.cells.split(",")
 
     inputBam = pysam.AlignmentFile(options.bam, 'rb')
-    
+
     # get list of genomic intervals
     intervals = chunk_bam(inputBam, nproc)
     inputBam.close()
