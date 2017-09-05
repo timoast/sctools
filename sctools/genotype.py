@@ -3,7 +3,6 @@
 from __future__ import division
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn import cluster, svm
 from sklearn.cross_validation import train_test_split
 
@@ -33,19 +32,17 @@ class Genotype:
             If `snp` does not have correct column names
         """
         if set(['cell_barcode', 'reference_count', 'alternate_count']).issubset(snp.columns):
-            self.multiplet_rate  = None
+            self.obs_multiplet_rate = None
+            self.estimated_multiplet_rate = None
             self.reference_count = None
             self.alternate_count = None
             self.multiplet_count = None
-            self.svm_accuracy    = None
+            self.svm_accuracy_bg = None
+            self.svm_accuracy_cells = None
             self.snp_counts      = snp
             self.log_snps        = None
             self.barcodes        = snp.cell_barcode
             self.cells           = None
-            self.background      = None
-            self.multi           = None
-            self.ref             = None
-            self.alt             = None
             self.clusters        = None
             self.downsample_data = None
         else:
@@ -83,7 +80,7 @@ class Genotype:
         train_x, test_x, train_y, test_y = train_test_split(subsample, db_bg.labels_, train_size = 0.7)
         model = svm.SVC()
         model.fit(train_x, train_y)
-        self.svm_accuracy = sum(model.predict(test_x) == test_y) / len(test_y)
+        self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
         self.filtered_cells['background'] = model.predict(self.filtered_cells[['reference_count', 'alternate_count']].as_matrix())
         self.cells = self.filtered_cells[self.filtered_cells.background < 0].copy()
 
@@ -181,6 +178,7 @@ class Genotype:
         title
             Title for the plot
         """
+        import matplotlib.pyplot as plt
         groups = self.labels.groupby('label')
         fig, ax = plt.subplots()
         if log_scale:
@@ -199,6 +197,24 @@ class Genotype:
             ax.set_xlabel("Reference UMI counts")
         ax.set_title(title)
         return(fig)
+
+    def summarize(self):
+        """Count number of cells of each genotype and
+        estimate the rate of cell multiplets
+        """
+        self.multiplet_count = sum(self.labels.label == 'multi')
+        self.reference_count = sum(self.labels.label == 'ref')
+        self.alternate_count = sum(self.labels.label == 'alt')
+        self.background_count = sum(self.labels.label == 'backgound')
+        self.total_cells = self.reference_count + self.alternate_count + self.multiplet_count
+        self.obs_multi_rate = self.multiplet_count / self.total_cells
+        self.estimated_multiplet_rate = self.obs_multi_rate / (min(self.reference_count, self.alternate_count) / self.total_cells)
+        dat = pd.DataFrame({'Count': [self.reference_count, self.alternate_count,
+                                      self.multiplet_count, self.estimated_multiplet_rate*self.total_cells],
+                            'Percentage': [self.reference_count / self.total_cells, self.alternate_count / self.total_cells,
+                                           self.obs_multi_rate, self.estimated_multiplet_rate]},
+                            index = ['Reference', 'Alternate', 'Observed Multiplet', 'Estimated Multiplet'])
+        return(dat)
 
 
 def run_genotyping(data):
@@ -221,4 +237,5 @@ def run_genotyping(data):
     gt.segment_cells()
     gt.find_clusters()
     gt.label_barcodes()
+    gt.summarize()
     return(gt)
