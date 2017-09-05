@@ -152,8 +152,9 @@ class Genotype:
         """Attach genotype labels to cell barcodes"""
         means = self.cells.groupby('cell').aggregate(np.mean)
         ref_cluster = means['reference_count'].argmax()
-        alt_cluster = means['alternate_count'].argmax()
-        multiplet_cluster = list(set([-1, 1, 0]) - set([ref_cluster, alt_cluster]))[0]
+        mean_diff = abs(means['reference_count'] - means['alternate_count'])
+        multiplet_cluster = mean_diff[mean_diff == min(mean_diff)].index[0]
+        alt_cluster = list(set([-1, 1, 0]) - set([multiplet_cluster, ref_cluster]))[0]
 
         lookup = {ref_cluster: 'ref', alt_cluster: 'alt', multiplet_cluster: 'multi'}
         col = self.cells.cell
@@ -168,9 +169,11 @@ class Genotype:
 
         cell_data = cell_data.append(background)
         all_data = pd.merge(self.snp_counts, cell_data, how = "inner", on = "cell_barcode")
+        all_data['log_reference_count'] = all_data[['reference_count']].apply(np.log1p, 1)
+        all_data['log_alternate_count'] = all_data[['alternate_count']].apply(np.log1p, 1)
         self.labels = all_data
 
-    def plot_clusters(self, title = "SNP genotyping"):
+    def plot_clusters(self, title = "SNP genotyping", log_scale = True):
         """Plot clustering results
 
         Parameters
@@ -178,38 +181,27 @@ class Genotype:
         title
             Title for the plot
         """
-        if self.downsample_data is None:
-            mat = self.cells.as_matrix()
+        groups = self.labels.groupby('label')
+        fig, ax = plt.subplots()
+        if log_scale:
+            for name, group in groups:
+                ax.plot(group.log_reference_count, group.log_alternate_count,
+                        marker='.', linestyle='', ms=2, label=name, alpha=0.5)
+            ax.legend()
+            ax.set_ylabel("Alternate UMI counts (log10 + 1)")
+            ax.set_xlabel("Reference UMI counts (log10 + 1)")
         else:
-            mat = self.downsample_data.as_matrix()
-        core_samples_mask = np.zeros_like(self.clusters.labels_, dtype=bool)
-        core_samples_mask[self.clusters.core_sample_indices_] = True
-        labels = self.clusters.labels_
-
-        unique_labels = set(labels)
-        colors = [plt.cm.Spectral(each)
-                  for each in np.linspace(0, 1, len(unique_labels))]
-        for k, col in zip(unique_labels, colors):
-            if k == -1:
-                # Black used for noise.
-                col = [0, 0, 0, 1]
-
-            class_member_mask = (labels == k)
-
-            xy = mat[class_member_mask & core_samples_mask]
-            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-                     markeredgecolor='k', markersize=14)
-
-            xy = mat[class_member_mask & ~core_samples_mask]
-            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-                     markeredgecolor='k', markersize=6)
-            plt.xlabel("Reference SNP count (log10 + 1)")
-            plt.ylabel("Alternate SNP count (log10 + 1)")
-            plt.title(title)
-        plt.show()
+            for name, group in groups:
+                ax.plot(group.reference_count, group.alternate_count,
+                        marker='.', linestyle='', ms=2, label=name, alpha=0.5)
+            ax.legend()
+            ax.set_ylabel("Alternate UMI counts")
+            ax.set_xlabel("Reference UMI counts")
+        ax.set_title(title)
+        return(fig)
 
 
-def run_genotyping(data, plot=False):
+def run_genotyping(data):
     """Genotype cells based on SNP counts
     Runs all the methods in the Genotype class
 
@@ -217,8 +209,6 @@ def run_genotyping(data, plot=False):
     ----------
     data : pandas dataframe
         SNP UMI count data.
-    plot : bool
-        Plot clustering results
 
     Returns
     -------
@@ -228,8 +218,7 @@ def run_genotyping(data, plot=False):
     gt.transform_snps()
     gt.filter_low_count()
     gt.detect_background()
+    gt.segment_cells()
     gt.find_clusters()
     gt.label_barcodes()
-    if plot is True:
-        gt.plot_clusters()
     return(gt)
