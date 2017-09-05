@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #! /usr/bin/env python
 
 from __future__ import division
@@ -237,5 +238,4 @@ def run_genotyping(data):
     gt.segment_cells()
     gt.find_clusters()
     gt.label_barcodes()
-    gt.summarize()
     return(gt)
