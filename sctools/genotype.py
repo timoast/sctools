@@ -5,7 +5,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 from sklearn import cluster, svm
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 
 
 class Genotype:
@@ -78,7 +78,7 @@ class Genotype:
         """
         subsample = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
         db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(subsample)
-        train_x, test_x, train_y, test_y = train_test_split(subsample, db_bg.labels_, train_size = 0.7)
+        train_x, test_x, train_y, test_y = train_test_split(subsample, db_bg.labels_, train_size = 0.7, test_size = 0.3)
         model = svm.SVC()
         model.fit(train_x, train_y)
         self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
@@ -138,7 +138,8 @@ class Genotype:
             # fit svm and classify all cells
             train_x, test_x, train_y, test_y = train_test_split(cell_data,
                                                                 db_cells.labels_,
-                                                                train_size = 0.7)
+                                                                train_size = 0.7,
+                                                                test_size = 0.3)
             model = svm.SVC()
             model.fit(train_x, train_y)
             self.svm_accuracy_cells = sum(model.predict(test_x) == test_y) / len(test_y)
