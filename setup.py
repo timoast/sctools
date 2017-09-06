@@ -32,7 +32,7 @@ setup(
     install_requires = [
         'pysam>0.8',
     ],
-    scripts = ["sctools/sctools.py"],
+    scripts = ["scripts/sctools"],
     author_email = 'timstuart90@gmail.com',
     url = 'https://github.com/timoast/sctools',
     packages = ['sctools'],
