@@ -62,7 +62,7 @@ class Genotype:
         (self.log_snps.reference_count > min_log10_count) & (self.log_snps.alternate_count > min_log10_count)
         ].copy()
 
-    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True):
+    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
         """Detect background cells using dbscan clustering on a subsample of cells.
         Extrapolate labels to all cells using a support vector machine
 
@@ -80,12 +80,15 @@ class Genotype:
             Default is to subsample to `n` cells and then extrapolate clustering information
             to remaining cells by training a model. If setting subsample to False, the parameters
             `min_sample` and `eps` should be set much higher (eg 10,000 and 1)
+        n_jobs : int, optional
+            Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
+            Should only be needed when setting `subsample` to False.
         """
         if subsample is True:
             cells = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
         else:
             cells = self.filtered_cells[['reference_count', 'alternate_count']].as_matrix()
-        db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(cells)
+        db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(cells)
         if subsample is True:
             train_x, test_x, train_y, test_y = train_test_split(cells, db_bg.labels_, train_size = 0.7, test_size = 0.3)
             model = svm.SVC()
@@ -126,7 +129,7 @@ class Genotype:
                 downsample_data = upper_segment.head(max_cells)
                 self.downsample_data = downsample_data.append(lower_segment)
 
-    def find_clusters(self, eps=0.4, min_samples=100):
+    def find_clusters(self, eps=0.4, min_samples=100, n_jobs=1):
         """Cluster genotypes using dbscan
 
         Parameters
@@ -136,13 +139,16 @@ class Genotype:
             expanding clusters. The larger the value, the larger each cluster will be.
         min_samples : int, optional
             Minimum number of cells in each cluster
+        n_jobs : int, optional
+            Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
+            Should only be needed when setting `subsample` to False.
         """
         if self.downsample_data is not None:
             cells_use = self.downsample_data
         else:
             cells_use = self.cells
         cell_data = cells_use[['reference_count', 'alternate_count']].as_matrix()
-        db_cells = cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(cell_data)
+        db_cells = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(cell_data)
         self.clusters = db_cells
         # need to extrapolate clustering results if downsampled
         if self.downsample_data is not None:
