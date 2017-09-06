@@ -62,7 +62,7 @@ class Genotype:
         (self.log_snps.reference_count > min_log10_count) & (self.log_snps.alternate_count > min_log10_count)
         ].copy()
 
-    def detect_background(self, n=2000, eps=0.5, min_samples=100):
+    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True):
         """Detect background cells using dbscan clustering on a subsample of cells.
         Extrapolate labels to all cells using a support vector machine
 
@@ -75,14 +75,25 @@ class Genotype:
             expanding clusters. The larger the value, the larger each cluster will be.
         min_samples : int, optional
             Minimum number of cells in each cluster
+        subsample : Bool, optional
+            Subsample cells before detecting background cluster (much faster).
+            Default is to subsample to `n` cells and then extrapolate clustering information
+            to remaining cells by training a model. If setting subsample to False, the parameters
+            `min_sample` and `eps` should be set much higher (eg 10,000 and 1)
         """
-        subsample = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
-        db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(subsample)
-        train_x, test_x, train_y, test_y = train_test_split(subsample, db_bg.labels_, train_size = 0.7, test_size = 0.3)
-        model = svm.SVC()
-        model.fit(train_x, train_y)
-        self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
-        self.filtered_cells['background'] = model.predict(self.filtered_cells[['reference_count', 'alternate_count']].as_matrix())
+        if subsample is True:
+            cells = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
+        else:
+            cells = self.filtered_cells[['reference_count', 'alternate_count']].as_matrix()
+        db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(cells)
+        if subsample is True:
+            train_x, test_x, train_y, test_y = train_test_split(cells, db_bg.labels_, train_size = 0.7, test_size = 0.3)
+            model = svm.SVC()
+            model.fit(train_x, train_y)
+            self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
+            self.filtered_cells['background'] = model.predict(self.filtered_cells[['reference_count', 'alternate_count']].as_matrix())
+        else:
+            self.filtered_cells['background'] = db_bg.labels_
         self.cells = self.filtered_cells[self.filtered_cells.background < 0].copy()
 
     def segment_cells(self, cutoff=0.2):
@@ -219,7 +230,7 @@ class Genotype:
         return(dat)
 
 
-def run_genotyping(data):
+def run_genotyping(data, subsample=True):
     """Genotype cells based on SNP counts
     Runs all the methods in the Genotype class
 
@@ -235,7 +246,10 @@ def run_genotyping(data):
     gt = Genotype(data)
     gt.transform_snps()
     gt.filter_low_count()
-    gt.detect_background()
+    if subsample is False:
+        gt.detect_background(eps=1, min_samples=10000, subsample=False)
+    else:
+        gt.detect_background()
     gt.segment_cells()
     gt.find_clusters()
     gt.label_barcodes()
