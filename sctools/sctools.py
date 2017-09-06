@@ -4,6 +4,7 @@
 single cell tools
 """
 
+from __future__ import absolute_import
 import pysam
 import gzip
 from multiprocessing import Pool
@@ -14,6 +15,8 @@ from glob import glob
 import os
 import time
 from subprocess import call
+import pandas as pd
+from sctools import genotype
 
 
 def log_info(func):
@@ -262,8 +265,6 @@ def genotype_cells(bam, snps, cells, nproc):
     return merged_data
 
 
-
-
 def merge_thread_output(data):
     """
     merge multiple dictionaries of the same format into one
@@ -465,40 +466,33 @@ def filterbarcodes(options):
         raise Exception("samtools merge failed, temp files not deleted")
 
 
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-    import pkg_resources
-    version = pkg_resources.require("sctools")[0].version
-    parser = ArgumentParser(description='Collection of tools for 10x chromium single-cell RNA-seq data analysis')
-    parser.add_argument('--version', action='version', version='%(prog)s '+str(version))
-    subparsers = parser.add_subparsers(title='Subcommands')
-
-    # filterbarcodes
-    parser_filterbarcodes = subparsers.add_parser('filterbarcodes', description='Filter reads based on input list of cell barcodes')
-    parser_filterbarcodes.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
-    parser_filterbarcodes.add_argument('-c', '--cells', help='File or comma-separated list of cell barcodes. Can be gzip compressed', required=True)
-    parser_filterbarcodes.add_argument('-o', '--output', help='Name for output text file', required=True)
-    parser_filterbarcodes.add_argument('-s', '--sam', help='Output sam format (default bam output)', required=False, action='store_true', default=False)
-    parser_filterbarcodes.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
-    parser_filterbarcodes.set_defaults(func=filterbarcodes)
-
-    # countsnps
-    parser_countsnps = subparsers.add_parser('countsnps', description='Count reference and alternate SNPs per cell in single-cell RNA data')
-    parser_countsnps.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
-    parser_countsnps.add_argument('-s', '--snp', help='File with SNPs. Needs chromosome, position, reference, alternate as first four columns', required=True)
-    parser_countsnps.add_argument('-o', '--output', help='Name for output text file', required=True)
-    parser_countsnps.add_argument('-c', '--cells', help='File or comma-separated list of cell barcodes to count SNPs for. Can be gzip compressed (optional)', required=False)
-    parser_countsnps.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
-    parser_countsnps.set_defaults(func=countsnps)
-
-    # countedited
-    parser_countedited = subparsers.add_parser('countedited', description='Count edited transcripts per gene per cell in single-cell RNA data. Output is a matrix of positions by cells.')
-    parser_countedited.add_argument('-b', '--bam', help='Input bam file (must be indexed)', required=True)
-    parser_countedited.add_argument('-e', '--edit', help='File with edited base coordinates. Needs chromosome, position, reference, alternate as first four columns', required=True)
-    parser_countedited.add_argument('-o', '--output', help='Name for output text file', required=True)
-    parser_countedited.add_argument('-c', '--cells', help='File containing cell barcodes to count edited bases for. Can be gzip compressed (optional)', required=False)
-    parser_countedited.add_argument('-p', '--nproc', help='Number of processors (default = 1)', required=False, default=1)
-    parser_countedited.set_defaults(func=countedited)
-
-    options = parser.parse_args()
-    options.func(options)
+@log_info
+def run_genotype(options):
+    """Genotype cells based on SNP counts
+    """
+    data = pd.read_table(options.infile)
+    gt = genotype.Genotype(data)
+    gt.transform_snps()
+    gt.filter_low_count()
+    if options.downsample is False:
+        gt.detect_background(eps=1,
+                             min_samples=10000,
+                             subsample=False,
+                             n_jobs=options.nproc)
+    else:
+        gt.detect_background(eps=options.eps_background,
+                             min_samples=options.min_samples_background,
+                             n_jobs=options.nproc)
+    gt.segment_cells()
+    gt.find_clusters(eps=options.eps_cells,
+                     min_samples=options.min_samples_cells,
+                     n_jobs=options.nproc)
+    gt.label_barcodes()
+    gt.labels.to_csv(options.outfile, sep='\t', index=False)
+    if options.plot is True:
+        from matplotlib.pyplot import savefig
+        pt = gt.plot_clusters()
+        plot_name = options.infile.split('.')[0] + ".png"
+        savefig(plot_name, dpi=500)
+    summary_name = options.outfile.split('.')[0] + '_summary.tsv'
+    gt.summarize().to_csv(summary_name, sep='\t', index=True)
