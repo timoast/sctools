@@ -227,7 +227,7 @@ class Genotype:
         self.background_count = sum(self.labels.label == 'backgound')
         self.total_cells = self.reference_count + self.alternate_count + self.multiplet_count
         self.obs_multi_rate = self.multiplet_count / self.total_cells
-        self.estimated_multiplet_rate = self.obs_multi_rate / (min(self.reference_count, self.alternate_count) / self.total_cells)
+        self.estimated_multiplet_rate = self.obs_multi_rate / (min(self.reference_count, self.alternate_count) / (self.reference_count + self.alternate_count))
         dat = pd.DataFrame({'Count': [self.reference_count, self.alternate_count,
                                       self.multiplet_count, self.estimated_multiplet_rate*self.total_cells],
                             'Percentage': [self.reference_count / self.total_cells, self.alternate_count / self.total_cells,
