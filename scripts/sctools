@@ -45,14 +45,14 @@ parser_genotype.add_argument('-n', '--nproc', help='Number of processors (defaul
 parser_genotype.add_argument('-p', '--plot', help='Plot results', required=False, default=False, action='store_true')
 parser_genotype.add_argument('-d', '--downsample', help='Do not downsample cells before detecting background cluster',
                              required=False, default=True, action='store_false')
-parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.6)
-parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.4)
+parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.5)
+parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.2)
 parser_genotype.add_argument('--min_samples_background', help='Minimum number of cells in each cluster for background cell clustering',
                              required=False, default=300)
 parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for cell clustering',
                              required=False, default=100)
 parser_genotype.add_argument('--min_umi', help='Minimum number of UMIs for a cell barcode to be entered into clustering steps (count)',
-                             required=False, default=0.5)
+                             required=False, default=10)
 parser_genotype.set_defaults(func=sctools.run_genotype)
 
 options = parser.parse_args()
