@@ -190,7 +190,7 @@ class Genotype:
     def label_barcodes(self):
         """Attach genotype labels to cell barcodes"""
         means = self.cells.groupby('cell').aggregate(np.mean)
-        assert len(means.index) != 3, "{} cell clusters detected (should be 2)".format(len(means.index))
+        assert len(means.index) == 3, "{} cell clusters detected (should be 2)".format(len(means.index)-1)
         ref_cluster = means['reference_count'].argmax()
         mean_diff = abs(means['reference_count'] - means['alternate_count'])
         multiplet_cluster = mean_diff[mean_diff == min(mean_diff)].index[0]
