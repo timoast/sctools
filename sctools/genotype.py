@@ -57,14 +57,25 @@ class Genotype:
         self.log_snps['cell_barcode'] = self.barcodes
 
     def filter_low_count(self, min_log10_count=2):
-        """Remove cell barcodes with less than min_log10_count SNP counts."""
+        """Remove cell barcodes with less than min_log10_count SNP counts
+
+        Parameters
+        ----------
+        min_log10_count : int, optional
+            log10(UMI) count cutoff for filtering cells
+
+        Returns
+        -------
+        None
+        """
         self.filtered_cells = self.log_snps[
         (self.log_snps.reference_count > min_log10_count) & (self.log_snps.alternate_count > min_log10_count)
         ].copy()
 
     def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
-        """Detect background cells using dbscan clustering on a subsample of cells.
+        """Detect background cells using dbscan clustering
         Extrapolate labels to all cells using a support vector machine
+        if cells are first downsampled.
 
         Parameters
         ----------
@@ -83,6 +94,10 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
+
+        Returns
+        -------
+        None
         """
         if subsample is True:
             cells = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
@@ -111,6 +126,10 @@ class Genotype:
         cutoff : float, optional
             Largest allowed percentage difference in cell counts between the two segments
             before the cells in the larger segment will be downsampled to match the smaller segment.
+
+        Returns
+        -------
+        None
         """
         bg_cells = self.filtered_cells[self.filtered_cells.background == 0]
         bg_mean_ref, bg_mean_alt = np.mean(bg_cells.reference_count), np.mean(bg_cells.alternate_count)
@@ -142,6 +161,10 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
+
+        Returns
+        -------
+        None
         """
         if self.downsample_data is not None:
             cells_use = self.downsample_data
@@ -192,12 +215,18 @@ class Genotype:
         self.labels = all_data
 
     def plot_clusters(self, title = "SNP genotyping", log_scale = True):
-        """Plot clustering results
+        """Plot cell genotyping results
 
         Parameters
         ----------
-        title
+        title : str, optional
             Title for the plot
+        log_scale : bool, optional
+            Plot UMI counts on a log10 scale
+
+        Returns
+        -------
+        A matplotlib figure object
         """
         import matplotlib.pyplot as plt
         groups = self.labels.groupby('label')
@@ -222,6 +251,14 @@ class Genotype:
     def summarize(self):
         """Count number of cells of each genotype and
         estimate the rate of cell multiplets
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        A pandas dataframe
         """
         self.multiplet_count = sum(self.labels.label == 'multi')
         self.reference_count = sum(self.labels.label == 'ref')
@@ -240,12 +277,15 @@ class Genotype:
 
 def run_genotyping(data, subsample=True):
     """Genotype cells based on SNP counts
-    Runs all the methods in the Genotype class
+    Wrapper for methods in the Genotype class
 
     Parameters
     ----------
     data : pandas dataframe
         SNP UMI count data.
+    subsample : bool, optional
+        Subsample cells when detecting background cluster and train
+        a support vector machine to detect remaining cells.
 
     Returns
     -------

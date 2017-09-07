@@ -403,7 +403,7 @@ def edited_transcripts(bam, edit_base, cells, nproc):
 
 @log_info
 def countedited(options):
-    """Count reference and alternate SNPs per cell in single-cell RNA data"""
+    """Count edited RNA bases per transcript per cell in single-cell RNA data"""
     bamfile = pysam.AlignmentFile(options.bam)
     if bamfile.has_index() is True:
         bamfile.close()
@@ -417,7 +417,12 @@ def countedited(options):
 
 @log_info
 def countsnps(options):
-    """Count reference and alternate SNPs per cell in single-cell RNA data"""
+    """Count reference and alternate SNPs per cell in single-cell RNA data
+
+    Look through a BAM file with CB and UB tags for cell barcodes and UMIs (as for
+    10x Genomics single-cell RNA-seq data) and count the UMIs supporting one of two
+    possible alleles at a list of known SNP positions.
+    """
     bamfile = pysam.AlignmentFile(options.bam)
     if bamfile.has_index() is True:
         bamfile.close()
@@ -431,7 +436,10 @@ def countsnps(options):
 
 @log_info
 def filterbarcodes(options):
-    """Filter reads based on input list of cell barcodes"""
+    """Filter reads based on input list of cell barcodes
+
+    Copy BAM entries matching a list of cell barcodes to a new BAM file.
+    """
     nproc = int(options.nproc)
     # check if cell barcodes option is a file
     if os.path.isfile(options.cells):
@@ -469,6 +477,9 @@ def filterbarcodes(options):
 @log_info
 def run_genotype(options):
     """Genotype cells based on SNP counts
+
+    Perform DBSCAN clustering to identify clusters of
+    background, reference allele, alternate allele, and multiplet cells.
     """
     data = pd.read_table(options.infile)
     gt = genotype.Genotype(data)
