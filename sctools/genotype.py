@@ -190,6 +190,7 @@ class Genotype:
     def label_barcodes(self):
         """Attach genotype labels to cell barcodes"""
         means = self.cells.groupby('cell').aggregate(np.mean)
+        assert len(means.index) != 3, "{} cell clusters detected (should be 2)".format(len(means.index))
         ref_cluster = means['reference_count'].argmax()
         mean_diff = abs(means['reference_count'] - means['alternate_count'])
         multiplet_cluster = mean_diff[mean_diff == min(mean_diff)].index[0]
@@ -210,8 +211,8 @@ class Genotype:
 
         cell_data = cell_data.append(background)
         all_data = pd.merge(self.snp_counts, cell_data, how = "inner", on = "cell_barcode")
-        all_data['log_reference_count'] = all_data[['reference_count']].apply(np.log1p, 1)
-        all_data['log_alternate_count'] = all_data[['alternate_count']].apply(np.log1p, 1)
+        all_data['log_reference_count'] = all_data[['reference_count']].apply(lambda x: np.log10(x + 1))
+        all_data['log_alternate_count'] = all_data[['alternate_count']].apply(lambda x: np.log10(x + 1))
         self.labels = all_data
 
     def plot_clusters(self, title = "SNP genotyping", log_scale = True):
