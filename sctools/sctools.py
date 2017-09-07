@@ -16,6 +16,7 @@ import os
 import time
 from subprocess import call
 import pandas as pd
+import numpy as np
 from sctools import genotype
 
 
