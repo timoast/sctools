@@ -56,7 +56,7 @@ class Genotype:
         self.log_snps = self.snp_counts[['reference_count', 'alternate_count']].apply(lambda x: np.log10(x+1))
         self.log_snps['cell_barcode'] = self.barcodes
 
-    def filter_low_count(self, min_log10_count=.5):
+    def filter_low_count(self, min_umi=10):
         """Remove cell barcodes with less than min_log10_count SNP counts
 
         Parameters
@@ -68,11 +68,13 @@ class Genotype:
         -------
         None
         """
+        assert self.log_snps is not None: "Run genotype.transform_snps first"
+        log_count = np.log10(min_umi + 1)
         self.filtered_cells = self.log_snps[
-        (self.log_snps.reference_count > min_log10_count) & (self.log_snps.alternate_count > min_log10_count)
+        (self.log_snps.reference_count > log_count) & (self.log_snps.alternate_count > log_count)
         ].copy()
 
-    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
+    def detect_background(self, n=2000, eps=0.5, min_samples=300, subsample=True, n_jobs=1):
         """Detect background cells using dbscan clustering
         Extrapolate labels to all cells using a support vector machine
         if cells are first downsampled.
@@ -99,6 +101,7 @@ class Genotype:
         -------
         None
         """
+        assert self.filtered_cells is not None: "Run genotype.filtered_cells first"
         if subsample is True:
             cells = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
         else:
@@ -131,6 +134,7 @@ class Genotype:
         -------
         None
         """
+        assert self.cells is not None: "Run genotype.detect_background first"
         bg_cells = self.filtered_cells[self.filtered_cells.background == 0]
         bg_mean_ref, bg_mean_alt = np.mean(bg_cells.reference_count), np.mean(bg_cells.alternate_count)
         yintercept = bg_mean_alt / bg_mean_ref
@@ -148,7 +152,7 @@ class Genotype:
                 downsample_data = upper_segment.head(max_cells)
                 self.downsample_data = downsample_data.append(lower_segment)
 
-    def detect_cells(self, eps=0.4, min_samples=100, n_jobs=1):
+    def detect_cells(self, eps=0.2, min_samples=100, n_jobs=1):
         """Cluster genotypes using dbscan
 
         Parameters
@@ -166,6 +170,7 @@ class Genotype:
         -------
         None
         """
+        assert self.cells is not None: "Run genotype.detect_background first"
         if self.downsample_data is not None:
             cells_use = self.downsample_data
         else:
@@ -189,6 +194,7 @@ class Genotype:
 
     def label_barcodes(self):
         """Attach genotype labels to cell barcodes"""
+        assert self.clusters is not None: "Run genotype.detect_cells first"
         means = self.cells.groupby('cell').aggregate(np.mean)
         assert len(means.index) == 3, "{} cell clusters detected (should be 2)".format(len(means.index)-1)
         ref_cluster = means['reference_count'].argmax()
@@ -229,6 +235,7 @@ class Genotype:
         -------
         A matplotlib figure object
         """
+        assert self.labels is not None: "Run genotype.label_barcodes first"
         import matplotlib.pyplot as plt
         groups = self.labels.groupby('label')
         fig, ax = plt.subplots()
@@ -261,6 +268,7 @@ class Genotype:
         -------
         A pandas dataframe
         """
+        assert self.labels is not None: "Run genotype.label_barcodes first"
         self.multiplet_count = sum(self.labels.label == 'multi')
         self.reference_count = sum(self.labels.label == 'ref')
         self.alternate_count = sum(self.labels.label == 'alt')
