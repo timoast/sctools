@@ -49,7 +49,7 @@ parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for 
 parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.4)
 parser_genotype.add_argument('--min_samples_background', help='Minimum number of cells in each cluster for background cell clustering',
                              required=False, default=300)
-parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for background cell clustering',
+parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for cell clustering',
                              required=False, default=100)
 parser_genotype.set_defaults(func=sctools.run_genotype)
 
