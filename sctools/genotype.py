@@ -175,8 +175,8 @@ class Genotype:
         lookup = {ref_cluster: 'ref', alt_cluster: 'alt', multiplet_cluster: 'multi'}
         col = self.cells.cell
         self.cells['label'] = [lookup[x] for x in list(col)]
-        self.cells.loc[(self.cells['label'] == 'multi') & (self.cells['alternate_count'] < means['alternate_count'][alt_cluster]), 'label'] = 'background'
-        self.cells.loc[(self.cells['label'] == 'multi') & (self.cells['reference_count'] < means['reference_count'][ref_cluster]), 'label'] = 'background'
+        self.cells.loc[(self.cells['label'] == 'multi') & (self.cells['alternate_count'] < means['reference_count'][alt_cluster]), 'label'] = 'background'
+        self.cells.loc[(self.cells['label'] == 'multi') & (self.cells['reference_count'] < means['alternate_count'][ref_cluster]), 'label'] = 'background'
         cell_data = self.cells[['cell_barcode', 'label']].copy()
 
         filtered_cells = list(set(self.snp_counts.cell_barcode).difference(self.filtered_cells.cell_barcode))
