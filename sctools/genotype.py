@@ -56,7 +56,7 @@ class Genotype:
         self.log_snps = self.snp_counts[['reference_count', 'alternate_count']].apply(lambda x: np.log10(x+1))
         self.log_snps['cell_barcode'] = self.barcodes
 
-    def filter_low_count(self, min_log10_count=1):
+    def filter_low_count(self, min_log10_count=.5):
         """Remove cell barcodes with less than min_log10_count SNP counts
 
         Parameters

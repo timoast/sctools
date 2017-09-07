@@ -484,7 +484,8 @@ def run_genotype(options):
     data = pd.read_table(options.infile)
     gt = genotype.Genotype(data)
     gt.transform_snps()
-    gt.filter_low_count()
+    log10_min = np.log10(float(options.min_umi))
+    gt.filter_low_count(min_log10_count=log10_min)
     if options.downsample is False:
         gt.detect_background(eps=1,
                              min_samples=10000,
