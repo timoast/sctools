@@ -69,7 +69,7 @@ class Genotype:
         None
         """
         assert self.log_snps is not None, "Run genotype.transform_snps first"
-        log_count = np.log10(min_umi + 1)
+        log_count = np.log10(int(min_umi) + 1)
         self.filtered_cells = self.log_snps[
         (self.log_snps.reference_count > log_count) & (self.log_snps.alternate_count > log_count)
         ].copy()
