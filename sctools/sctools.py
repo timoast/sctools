@@ -501,7 +501,7 @@ def run_genotype(options):
                     min_samples=options.min_samples_cells,
                     n_jobs=options.nproc)
     gt.label_barcodes()
-    gt.labels.to_csv(options.outfile, sep='\t', index=False)
+    gt.labels[['cell_barcode', 'reference_count', 'alternate_count', 'label']].to_csv(options.outfile, sep='\t', index=False)
     if options.plot is True:
         from matplotlib.pyplot import savefig
         pt = gt.plot_clusters()
