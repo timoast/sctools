@@ -145,6 +145,6 @@ geno.transform_snps()                          # log transform SNP UMI counts
 geno.filter_low_count(min_log10_count=1)       # remove cells with less than log10(UMI) = 1
 geno.detect_background(eps=1, min_samples=500) # detect background cell cluster
 geno.segment_cells()                           # downsample cells to equal numbers for each genotype
-geno.find_clusters(eps=0.3, min_samples=100)   # detect cell clusters
+geno.detect_cells(eps=0.3, min_samples=100)    # detect cell clusters
 geno.label_barcodes()                          # attach genotype labels to cell barcodes
 ```

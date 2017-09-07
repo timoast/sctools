@@ -484,9 +484,9 @@ def run_genotype(options):
                              min_samples=options.min_samples_background,
                              n_jobs=options.nproc)
     gt.segment_cells()
-    gt.find_clusters(eps=options.eps_cells,
-                     min_samples=options.min_samples_cells,
-                     n_jobs=options.nproc)
+    gt.detect_cells(eps=options.eps_cells,
+                    min_samples=options.min_samples_cells,
+                    n_jobs=options.nproc)
     gt.label_barcodes()
     gt.labels.to_csv(options.outfile, sep='\t', index=False)
     if options.plot is True:

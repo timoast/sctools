@@ -129,7 +129,7 @@ class Genotype:
                 downsample_data = upper_segment.head(max_cells)
                 self.downsample_data = downsample_data.append(lower_segment)
 
-    def find_clusters(self, eps=0.4, min_samples=100, n_jobs=1):
+    def detect_cells(self, eps=0.4, min_samples=100, n_jobs=1):
         """Cluster genotypes using dbscan
 
         Parameters
@@ -259,6 +259,6 @@ def run_genotyping(data, subsample=True):
     else:
         gt.detect_background()
     gt.segment_cells()
-    gt.find_clusters()
+    gt.detect_cells()
     gt.label_barcodes()
     return(gt)
