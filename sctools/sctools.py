@@ -1,8 +1,5 @@
+# -*- coding: utf-8 -*-
 #! /usr/bin/env python
-
-"""
-single cell tools
-"""
 
 from __future__ import absolute_import
 import pysam
@@ -17,6 +14,7 @@ import time
 from subprocess import call
 import pandas as pd
 import numpy as np
+from scipy import io
 from sctools import genotype
 
 
@@ -401,6 +399,76 @@ def edited_transcripts(bam, edit_base, cells, nproc):
     merged_data = merge_thread_output(data)
     return merged_data
 
+class SC:
+    """Process 10x Genomics scRNA-seq data matrix
+    """
+
+    def __init__(self):
+        self.barcodes = None
+        self.genes    = None
+        self.counts   = None
+
+    def read_10x(self, path):
+        """Load the single-cell RNA-seq count data as a sparse matrix
+
+        Parameters
+        ----------
+        path : str
+            Path to the 10x Genomics output folder
+
+        Returns
+        -------
+        None
+        """
+        barcodes = [x.rsplit()[0] for x in open(path + "/barcodes.tsv", "r")]
+        bc = {}
+        for x in range(len(barcodes)):
+            bc[barcodes[x]] = x
+        self.cells = bc
+        genes = [x.rsplit()[1] for x in open(path + "/genes.tsv", "r")]
+        gn = {}
+        for x in range(len(genes)):
+            gn[genes[x]] = x
+        self.genes = gn
+        self.counts = io.mmread(path + "/matrix.mtx").tocsc()
+
+    def subset(self, cells=None, genes=None):
+        """Subset count matrix
+
+        Parameters
+        ----------
+        cells : list, optional
+            List of cell barcodes to retain. Default is all cells.
+        genes : list, optional
+            List of genes to retain. Default is all genes.
+
+        Returns
+        -------
+        A SC object
+        """
+        if genes is None and cells is None:
+            return(self)
+        if genes is None:
+            genes = self.genes.keys()
+        if cells is None:
+            cells = self.cells.keys()
+
+        cell_indexes = [self.cells[x] for x in cells]
+        gene_indexes = [self.genes[x] for x in genes]
+        selected = np.ix_(cell_indexes, gene_indexes)
+
+        new_sc = SC()
+        bc = {}
+        for x in range(len(cells)):
+            bc[cells[x]] = x
+        gn = {}
+        for x in range(len(genes)):
+            gn[genes[x]] = x
+        new_sc.cells = bc
+        new_sc.genes = gn
+        new_sc.counts = self.counts[selected]
+        return(new_sc)
+
 
 @log_info
 def countedited(options):
@@ -487,12 +555,12 @@ def run_genotype(options):
     gt.transform_snps()
     gt.filter_low_count(min_umi=options.min_umi)
     if options.downsample is False:
-        gt.detect_background(eps=1,
+        gt.detect_total_background(eps=1,
                              min_samples=10000,
                              subsample=False,
                              n_jobs=options.nproc)
     else:
-        gt.detect_background(eps=options.eps_background,
+        gt.detect_total_background(eps=options.eps_background,
                              min_samples=options.min_samples_background,
                              n_jobs=options.nproc)
     gt.segment_cells()
