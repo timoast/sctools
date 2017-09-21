@@ -491,7 +491,7 @@ def cluster_labels(cell_data):
     return(ref_cluster, np.int64(alt_cluster), multiplet_cluster)
 
 
-def run_genotyping(data, subsample=True):
+def run_genotyping(data, subsample=True, basic=True):
     """Genotype cells based on SNP counts
     Wrapper for methods in the Genotype class
 
@@ -502,6 +502,8 @@ def run_genotyping(data, subsample=True):
     subsample : bool, optional
         Subsample cells when detecting background cluster and train
         a support vector machine to detect remaining cells.
+    basic : bool, optional
+        Run basic genotying without detecting cells on the border between background and real cells.
 
     Returns
     -------
@@ -510,11 +512,15 @@ def run_genotyping(data, subsample=True):
     gt = Genotype(data)
     gt.transform_snps()
     gt.filter_low_count()
+    if basic is False:
+        gt.detect_core_background()
     if subsample is False:
-        gt.detect_background(eps=1, min_samples=10000, subsample=False)
+        gt.detect_total_background(eps=1, min_samples=10000, subsample=False)
     else:
-        gt.detect_background()
+        gt.detect_total_background()
     gt.segment_cells()
     gt.detect_cells()
+    if basic is False:
+        gt.detect_margin_cells()
     gt.label_barcodes()
     return(gt)
