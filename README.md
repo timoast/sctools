@@ -148,3 +148,14 @@ geno.segment_cells()                                 # downsample cells to equal
 geno.detect_cells(eps=0.3, min_samples=100)          # detect cell clusters
 geno.label_barcodes()                                # attach genotype labels to cell barcodes
 ```
+
+You can also use functions in sctools to read and subset the gene expression matrix output by CellRanger in sparse matrix format.
+
+```python
+from sctools import sctools
+
+tenx = sctools.SC()
+tenx.read_10x("filtered_gene_bc_matrices/genome")
+subset_cells = tenx.subset(cells = ['AAGGAGCCAGCTATTG', 'AAACCTGGTAGCTAAA'])
+subset_cells.counts.toarray()
+```
