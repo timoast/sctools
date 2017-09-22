@@ -421,15 +421,9 @@ class SC:
         None
         """
         barcodes = [x.rsplit()[0] for x in open(path + "/barcodes.tsv", "r")]
-        bc = {}
-        for x in range(len(barcodes)):
-            bc[barcodes[x]] = x
-        self.cells = bc
+        self.cells = pd.Series(barcodes)
         genes = [x.rsplit()[1] for x in open(path + "/genes.tsv", "r")]
-        gn = {}
-        for x in range(len(genes)):
-            gn[genes[x]] = x
-        self.genes = gn
+        self.genes = pd.Series(genes)
         self.counts = io.mmread(path + "/matrix.mtx").tocsc()
 
     def subset(self, cells=None, genes=None):
@@ -449,25 +443,39 @@ class SC:
         if genes is None and cells is None:
             return(self)
         if genes is None:
-            genes = self.genes.keys()
+            genes = self.genes.values
         if cells is None:
-            cells = self.cells.keys()
+            cells = self.cells.values
 
-        cell_indexes = [self.cells[x] for x in cells]
-        gene_indexes = [self.genes[x] for x in genes]
+        cell_indexes = self.cells[self.cells.isin(cells)].index
+        gene_indexes = self.genes[self.genes.isin(genes)].index
         selected = np.ix_(cell_indexes, gene_indexes)
 
         new_sc = SC()
-        bc = {}
-        for x in range(len(cells)):
-            bc[cells[x]] = x
-        gn = {}
-        for x in range(len(genes)):
-            gn[genes[x]] = x
-        new_sc.cells = bc
-        new_sc.genes = gn
+        new_sc.cells = pd.Series(cells)
+        new_sc.genes = pd.Series(genes)
         new_sc.counts = self.counts[selected]
         return(new_sc)
+
+    def head(self, n=10):
+        """Return the first n rows and columns of the count matrix
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of rows and columns to print. Default is 10.
+
+        Returns
+        -------
+        A dense matrix
+        """
+        max_len = min(len(self.cells), len(self.genes))
+        if n > max_len:
+            n = max_len
+        colnames = self.cells
+        rownames = self.genes
+        df = pd.DataFrame(data=self.counts[0:n, 0:n].todense(), columns=self.cells[0:n], index=self.genes[0:n])
+        return(df)
 
 
 @log_info
