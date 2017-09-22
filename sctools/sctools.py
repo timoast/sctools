@@ -467,7 +467,7 @@ class SC:
 
         Returns
         -------
-        A dense matrix
+        A pandas dataframe
         """
         max_len = min(len(self.cells), len(self.genes))
         if n > max_len:
