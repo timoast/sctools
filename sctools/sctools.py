@@ -554,6 +554,8 @@ def run_genotype(options):
     gt = genotype.Genotype(data)
     gt.transform_snps()
     gt.filter_low_count(min_umi=options.min_umi)
+    if options.margins:
+        gt.detect_core_background(subsample=options.downsample)
     if options.downsample is False:
         gt.detect_total_background(eps=1,
                              min_samples=10000,
@@ -567,6 +569,8 @@ def run_genotype(options):
     gt.detect_cells(eps=options.eps_cells,
                     min_samples=options.min_samples_cells,
                     n_jobs=options.nproc)
+    if options.margins:
+        gt.detect_margin_cells()
     gt.label_barcodes()
     gt.labels[['cell_barcode', 'reference_count', 'alternate_count', 'label']].to_csv(options.outfile, sep='\t', index=False)
     if options.plot is True:
