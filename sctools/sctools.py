@@ -399,10 +399,6 @@ class SC:
         ----------
         path : str
             Path to the 10x Genomics output folder
-
-        Returns
-        -------
-        None
         """
         barcodes = [x.rsplit()[0] for x in open(path + "/barcodes.tsv", "r")]
         self.cells = pd.Series(barcodes)
@@ -422,7 +418,8 @@ class SC:
 
         Returns
         -------
-        A SC object
+        SC
+            A SC object
         """
         if genes is None and cells is None:
             return(self)
@@ -451,7 +448,8 @@ class SC:
 
         Returns
         -------
-        A pandas dataframe
+        pandas.DataFrame
+            A pandas dataframe
         """
         max_len = min(len(self.cells), len(self.genes))
         if n > max_len:

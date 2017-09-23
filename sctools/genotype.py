@@ -104,7 +104,8 @@ class Genotype:
 
         Returns
         -------
-        A list of cluster labels
+        list
+            A list of cluster labels
         """
         assert self.log_snps is not None, "Run genotype.transform_snps() first"
         if (subsample is False )or (n > len(self.log_snps)):
@@ -145,10 +146,6 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
-
-        Returns
-        -------
-        None
         """
         clusters = self.detect_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
         bg_cells = [x == 0 for x in clusters]
@@ -179,10 +176,6 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
-
-        Returns
-        -------
-        None
         """
         clusters = self.detect_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
         bg_cells = [x == 0 for x in clusters]
@@ -205,10 +198,11 @@ class Genotype:
 
         Returns
         -------
-        A dataframe containing downsampled data. This should be stored in the self.downsample_data slot, eg:
-        gen = genotype.Genotype(snps)
-        ...
-        gen.downsample_data = gen.segment_cells()
+        pandas.DataFrame
+            A dataframe containing downsampled data. This should be stored in the self.downsample_data slot, eg:
+            gen = genotype.Genotype(snps)
+            ...
+            gen.downsample_data = gen.segment_cells()
         """
         assert self.cells is not None, "Run genotype.detect_total_background() first"
 
@@ -255,7 +249,8 @@ class Genotype:
 
         Returns
         -------
-        A list of cluster labels
+        list
+            A list of cluster labels
         """
         assert self.cells is not None, "Run genotype.detect_total_background() first"
         if core_bg is True:
@@ -301,10 +296,6 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
-
-        Returns
-        -------
-        None
         """
         clusters = self.detect_cell_clusters(eps=eps, min_samples=min_samples, n_jobs=n_jobs)
         cell_data = self.cells.copy()
@@ -340,10 +331,6 @@ class Genotype:
         n_jobs : int, optional
             Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
             Should only be needed when setting `subsample` to False.
-
-        Returns
-        -------
-        None
         """
         assert self.ref_cells is not None, "Run genotype.detect_cells() first"
         clusters = self.detect_cell_clusters(eps=eps, min_samples=min_samples, n_jobs=n_jobs, core_bg=True)
@@ -361,7 +348,8 @@ class Genotype:
         self.margin_multi = [x for x in multi_cells if x in self.background]
 
     def label_barcodes(self):
-        """Attach genotype labels to cell barcodes"""
+        """Attach genotype labels to cell barcodes
+        """
         assert self.ref_cells is not None, "Run genotype.detect_cells() first"
 
         barcodes = self.ref_cells + self.alt_cells + self.multi_cells
@@ -414,7 +402,8 @@ class Genotype:
 
         Returns
         -------
-        A matplotlib figure object
+        figure
+            A matplotlib figure object
         """
         assert self.labels is not None, "Run genotype.label_barcodes() first"
         import matplotlib.pyplot as plt
@@ -447,7 +436,8 @@ class Genotype:
 
         Returns
         -------
-        A pandas dataframe
+        pandas.DataFrame
+            A pandas dataframe
         """
         assert self.labels is not None, "Run genotype.label_barcodes() first"
         self.multiplet_count = sum(self.labels.label == 'multi')
@@ -474,7 +464,8 @@ def cluster_labels(cell_data):
 
     Returns
     -------
-    reference cluster number, alternate cluster number, multiplet cluster number
+    tuple
+        reference cluster number, alternate cluster number, multiplet cluster number
     """
     multiplet_cluster = np.int64(-1)  # multiplet cluster should always be -1
     means = cell_data[cell_data.cell != -1].groupby('cell').aggregate(np.mean)
