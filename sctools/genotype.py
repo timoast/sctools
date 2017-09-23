@@ -61,25 +61,19 @@ class Genotype:
 
     def transform_snps(self):
         """Log-transform SNP counts for reference and alternate alleles."""
-        self.log_snps = self.snp_counts[['reference_count', 'alternate_count']].apply(lambda x: np.log10(x+1))
-        self.log_snps['cell_barcode'] = self.barcodes
+        self.log_snps = self.filtered_cells[['reference_count', 'alternate_count']].apply(lambda x: np.log10(x+1))
+        self.log_snps['cell_barcode'] = self.filtered_cells.cell_barcode
 
     def filter_low_count(self, min_umi=10):
         """Remove cell barcodes with less than min_log10_count SNP counts
 
         Parameters
         ----------
-        min_log10_count : int, optional
-            log10(UMI) count cutoff for filtering cells
-
-        Returns
-        -------
-        None
+        min_umi : int, optional
+            UMI count cutoff for filtering cells. Default is 10.
         """
-        assert self.log_snps is not None, "Run genotype.transform_snps() first"
-        log_count = np.log10(int(min_umi) + 1)
-        self.filtered_cells = self.log_snps[
-        (self.log_snps.reference_count > log_count) & (self.log_snps.alternate_count > log_count)
+        self.filtered_cells = self.snp_counts[
+        (self.snp_counts.reference_count > min_umi) & (self.snp_counts.alternate_count > min_umi)
         ].copy()
         valid_cells = self.snp_counts.cell_barcode.isin(self.filtered_cells.cell_barcode)
         low_count = [not x for x in valid_cells]
@@ -112,17 +106,17 @@ class Genotype:
         -------
         A list of cluster labels
         """
-        assert self.filtered_cells is not None, "Run genotype.filter_low_count() first"
-        if (subsample is False )or (n > len(self.filtered_cells)):
-            n = len(self.filtered_cells)
-        cells = self.filtered_cells[['reference_count', 'alternate_count']].head(n).as_matrix()
+        assert self.log_snps is not None, "Run genotype.transform_snps() first"
+        if (subsample is False )or (n > len(self.log_snps)):
+            n = len(self.log_snps)
+        cells = self.log_snps[['reference_count', 'alternate_count']].head(n).as_matrix()
         db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(cells)
-        if (subsample is True) and (n < len(self.filtered_cells)):
+        if (subsample is True) and (n < len(self.log_snps)):
             train_x, test_x, train_y, test_y = train_test_split(cells, db_bg.labels_, train_size = 0.7, test_size = 0.3)
             model = svm.SVC()
             model.fit(train_x, train_y)
             self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
-            clusters = self.filtered_cells['background'] = model.predict(self.filtered_cells[['reference_count', 'alternate_count']].as_matrix())
+            clusters = model.predict(self.log_snps[['reference_count', 'alternate_count']].as_matrix())
             return(list(clusters))
         else:
             return(list(db_bg.labels_))
@@ -158,7 +152,7 @@ class Genotype:
         """
         clusters = self.detect_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
         bg_cells = [x == 0 for x in clusters]
-        self.background_core = list(self.filtered_cells[bg_cells].cell_barcode)
+        self.background_core = list(self.log_snps[bg_cells].cell_barcode)
 
     def detect_total_background(self, n=2000, eps=0.5, min_samples=300, subsample=True, n_jobs=1):
         """Detect all background cells using dbscan clustering
@@ -193,8 +187,8 @@ class Genotype:
         clusters = self.detect_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
         bg_cells = [x == 0 for x in clusters]
         cells = [x < 0 for x in clusters]
-        self.background = list(self.filtered_cells[bg_cells].cell_barcode) + self.low_count
-        self.cells = self.filtered_cells[cells]
+        self.background = list(self.log_snps[bg_cells].cell_barcode) + self.low_count
+        self.cells = self.log_snps[cells]
 
     def segment_cells(self, cutoff=0.2, core_bg=False):
         """Segment cell population into two halves and assess density distribution
@@ -219,13 +213,13 @@ class Genotype:
         assert self.cells is not None, "Run genotype.detect_total_background() first"
 
         if core_bg is False:
-            bg_cells = self.filtered_cells[self.filtered_cells.cell_barcode.isin(self.background)]
+            bg_cells = self.log_snps[self.log_snps.cell_barcode.isin(self.background)]
             cells_use = self.cells
         else:
             assert self.background_core is not None, "Run genotype.detect_core_background() first"
-            bg = list(self.filtered_cells.cell_barcode.isin(self.background_core))
-            bg_cells = self.filtered_cells[bg]
-            cells_use = self.filtered_cells[[not x for x in bg]]
+            bg = list(self.log_snps.cell_barcode.isin(self.background_core))
+            bg_cells = self.log_snps[bg]
+            cells_use = self.log_snps[[not x for x in bg]]
 
         bg_mean_ref, bg_mean_alt = np.mean(bg_cells.reference_count), np.mean(bg_cells.alternate_count)
         yintercept = bg_mean_alt / bg_mean_ref
@@ -271,8 +265,8 @@ class Genotype:
                 cells_use = self.segment_cells(core_bg=True)
             else:
                 # remove core bg cells
-                bg = self.filtered_cells.cell_barcode.isin(self.background_core)
-                cells_use = self.filtered_cells[[not x for x in bg]].copy()
+                bg = self.log_snps.cell_barcode.isin(self.background_core)
+                cells_use = self.log_snps[[not x for x in bg]].copy()
         elif self.downsample_data is not None:
             cells_use = self.downsample_data.copy()
         else:
@@ -353,8 +347,8 @@ class Genotype:
         """
         assert self.ref_cells is not None, "Run genotype.detect_cells() first"
         clusters = self.detect_cell_clusters(eps=eps, min_samples=min_samples, n_jobs=n_jobs, core_bg=True)
-        core_bg = self.filtered_cells.cell_barcode.isin(self.background_core)
-        cell_data = self.filtered_cells[[not x for x in core_bg]].copy()
+        core_bg = self.log_snps.cell_barcode.isin(self.background_core)
+        cell_data = self.log_snps[[not x for x in core_bg]].copy()
         cell_data['cell'] = clusters
         ref, alt, multi = cluster_labels(cell_data)
         ref_cells = list(cell_data[clusters == ref]['cell_barcode'])
@@ -510,8 +504,8 @@ def run_genotyping(data, subsample=True, basic=True):
     An object of class Genotype
     """
     gt = Genotype(data)
-    gt.transform_snps()
     gt.filter_low_count()
+    gt.transform_snps()
     if basic is False:
         gt.detect_core_background()
     if subsample is False:
