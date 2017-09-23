@@ -525,7 +525,7 @@ def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
     else:
         gt.detect_total_background(eps=eps_background, min_samples=min_drops_background,
                                    n_jobs=nproc)
-    gt.segment_cells()
+    gt.downsample_data = gt.segment_cells()
     gt.detect_cells(eps=eps_cells,
                     min_samples=min_drops_cells,
                     n_jobs=nproc)
