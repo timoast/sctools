@@ -65,7 +65,7 @@ class Genotype:
         self.log_snps['cell_barcode'] = self.filtered_cells.cell_barcode
 
     def filter_low_count(self, min_umi=10):
-        """Remove cell barcodes with less than min_log10_count SNP counts
+        """Remove cell barcodes with low SNP counts
 
         Parameters
         ----------
@@ -514,7 +514,7 @@ def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
     Genotype
         An object of class Genotype
     """
-    gt = genotype.Genotype(data)
+    gt = Genotype(data)
     gt.filter_low_count(min_umi=min_umi)
     gt.transform_snps()
     if margin:
