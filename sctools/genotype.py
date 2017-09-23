@@ -485,36 +485,60 @@ def cluster_labels(cell_data):
     return(ref_cluster, np.int64(alt_cluster), multiplet_cluster)
 
 
-def run_genotyping(data, subsample=True, basic=True):
+def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
+                   eps_background=0.5, eps_cells=0.2, min_drops_background=300,
+                   min_drops_cells=100):
     """Genotype cells based on SNP counts
-    Wrapper for methods in the Genotype class
+
+    Performs iterative density-based clustering using the DBSCAN algorithm to detect
+    background cluster of empty droplets, a cluster of cells for each genotype or species,
+    and a cluster of multiplet cells.
 
     Parameters
     ----------
     data : pandas dataframe
         SNP UMI count data.
+    min_umi : int, optional
+        Minimum UMI count for each cell. Default is 10.
     subsample : bool, optional
         Subsample cells when detecting background cluster and train
-        a support vector machine to detect remaining cells.
-    basic : bool, optional
-        Run basic genotying without detecting cells on the border between background and real cells.
+        a support vector machine to detect remaining cells. Default is True.
+    margin : bool, optional
+        Detect cells on the border between background and real cells. Default is False.
+    nproc : int, optional
+        Number of processors. Default is 1, setting to -1 will use all cores.
+    eps_background : float, optional
+        Epsilon value passed to DBSCAN for detection of background cluster. Default is 0.5.
+    eps_cells : float, optional
+        Epsilon value passed to DBSCAN for detection of cell clusters. Default is 0.2.
+    min_drops_background : int, optional
+        Minimum number of barcodes per cluster allowed during detection of background cluster.
+        Default is 300.
+    min_drops_cells : int, optional
+        Minimum number of barcodes per cluster allowed during detection of cell clusters.
+        Default is 100.
 
     Returns
     -------
-    An object of class Genotype
+    Genotype
+        An object of class Genotype
     """
-    gt = Genotype(data)
-    gt.filter_low_count()
+    gt = genotype.Genotype(data)
+    gt.filter_low_count(min_umi=min_umi)
     gt.transform_snps()
-    if basic is False:
-        gt.detect_core_background()
+    if margin:
+        gt.detect_core_background(subsample=subsample)
     if subsample is False:
-        gt.detect_total_background(eps=1, min_samples=10000, subsample=False)
+        gt.detect_total_background(eps=1, min_samples=10000,
+                                   subsample=False, n_jobs=nproc)
     else:
-        gt.detect_total_background()
+        gt.detect_total_background(eps=eps_background, min_samples=min_drops_background,
+                                   n_jobs=nproc)
     gt.segment_cells()
-    gt.detect_cells()
-    if basic is False:
+    gt.detect_cells(eps=eps_cells,
+                    min_samples=min_drops_cells,
+                    n_jobs=nproc)
+    if margin:
         gt.detect_margin_cells()
     gt.label_barcodes()
     return(gt)

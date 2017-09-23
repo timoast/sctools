@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #! /usr/bin/env python
 
-from __future__ import absolute_import
 import pysam
 import gzip
 from multiprocessing import Pool
@@ -15,21 +14,6 @@ from subprocess import call
 import pandas as pd
 import numpy as np
 from scipy import io
-from sctools import genotype
-
-
-def log_info(func):
-    @functools.wraps(func)
-    def wrapper(args):
-        print("Function {} called with the following arguments:\n".format(func.__name__))
-        for arg in vars(args):
-            print(str(arg) + '\t' + str(getattr(args, arg)))
-        t1 = time.time()
-        func(args)
-        t2 = time.time()
-        elapsed = [round(x, 2) for x in divmod(t2-t1, 60)]
-        print("\nFunction completed in  {} m {} s\n".format(elapsed[0], elapsed[1]))
-    return wrapper
 
 
 def chunk_bam(bamfile, nproc):
@@ -478,56 +462,107 @@ class SC:
         return(df)
 
 
-@log_info
-def countedited(options):
-    """Count edited RNA bases per transcript per cell in single-cell RNA data"""
-    bamfile = pysam.AlignmentFile(options.bam)
+def countedited(bam, edit, cells=None, nproc=1):
+    """Count edited RNA bases per transcript per cell in single-cell RNA data
+
+    Search through BAM file and count the number of UMIs for each RNA editing site
+
+    Parameters
+    ----------
+    bam : str
+        Input BAM file. Must be indexed.
+    edit : str
+        File with edited base coordinates. Needs chromosome, position,
+        reference, alternate as first four columns
+    cells : str, optional
+        File containing cell barcodes to count edited bases for. Can be gzip compressed.
+    nproc : int, optional
+        Number of processors. Default is 1.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe containing UMI counts for each edit position in each cell.
+    """
+    bamfile = pysam.AlignmentFile(bam)
     if bamfile.has_index() is True:
         bamfile.close()
-        data = edited_transcripts(options.bam, options.edit, options.cells, options.nproc)
-        save_edit_data(data, options.output)
+        data = edited_transcripts(bam, edit, cells, nproc)
+        return(data)
     else:
         bamfile.close()
         print("bam file not indexed")
         exit()
 
 
-@log_info
-def countsnps(options):
+def countsnps(bam, snp, cells=None, nproc=1):
     """Count reference and alternate SNPs per cell in single-cell RNA data
 
     Look through a BAM file with CB and UB tags for cell barcodes and UMIs (as for
     10x Genomics single-cell RNA-seq data) and count the UMIs supporting one of two
     possible alleles at a list of known SNP positions.
+
+    Parameters
+    ----------
+    bam : str
+        Path to BAM file. Must be indexed.
+    snp : str
+        Path to file containing SNP information. Needs chromosome, position, reference, alternate as first four columns
+    cells : str, optional
+        Path to file containing cell barcodes to count SNPs for. Can be gzip compressed.
+    nproc : int, optional
+        Number of processors. Default is 1.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A dataframe containing SNP counts for each cell barcode
     """
-    bamfile = pysam.AlignmentFile(options.bam)
+    bamfile = pysam.AlignmentFile(bam)
     if bamfile.has_index() is True:
         bamfile.close()
-        data = genotype_cells(options.bam, options.snp, options.cells, options.nproc)
-        save_data(data, options.output)
+        data = genotype_cells(bam, snp, cells, options.nproc)
+        return(data)
     else:
         bamfile.close()
         print("bam file not indexed")
         exit()
 
 
-@log_info
-def filterbarcodes(options):
+def filterbarcodes(cells, bam, output, sam=False, nproc=1):
     """Filter reads based on input list of cell barcodes
 
     Copy BAM entries matching a list of cell barcodes to a new BAM file.
-    """
-    nproc = int(options.nproc)
-    # check if cell barcodes option is a file
-    if os.path.isfile(options.cells):
-        if options.cells.endswith(".gz"):
-            cb = [line.strip("\n") for line in gzip.open(options.cells, "b")]
-        else:
-            cb = [line.strip("\n") for line in open(options.cells, "r")]
-    else:
-        cb = options.cells.split(",")
 
-    inputBam = pysam.AlignmentFile(options.bam, 'rb')
+    Parameters
+    ----------
+    cells : str
+        Path to file containing cell barcodes, or comma-separated list of cell barcodes. File can be gzip compressed.
+    bam : str
+        Path to BAM file.
+    output : str
+        Name for output file.
+    sam : bool, optional
+        Output SAM format. Default is BAM format.
+    nproc : int, optional
+        Number of processors to use. Default is 1.
+
+    Raises
+    ------
+    Exception
+        If samtools merge of temporary BAM files fails
+    """
+    nproc = int(nproc)
+    # check if cell barcodes option is a file
+    if os.path.isfile(cells):
+        if cells.endswith(".gz"):
+            cb = [line.strip("\n") for line in gzip.open(cells, "b")]
+        else:
+            cb = [line.strip("\n") for line in open(cells, "r")]
+    else:
+        cb = cells.split(",")
+
+    inputBam = pysam.AlignmentFile(bam, 'rb')
 
     # get list of genomic intervals
     intervals = chunk_bam(inputBam, nproc)
@@ -537,54 +572,15 @@ def filterbarcodes(options):
 
     # map chunks to cores
     tempfiles = p.map_async(functools.partial(iterate_reads,
-                            bam=options.bam, sam=options.sam, output=options.output,
+                            bam=bam, sam=sam, output=output,
                             cb=cb), intervals.values()).get(9999999)
 
     # merge the temporary bam files
-    mergestring = 'samtools merge -@ ' + str(nproc) + ' ' + options.output + ' ' + ' '.join(tempfiles)
+    mergestring = 'samtools merge -@ ' + str(nproc) + ' ' + output + ' ' + ' '.join(tempfiles)
     call(mergestring, shell=True)
 
     # remove temp files if merged
-    if os.path.exists(options.output):
+    if os.path.exists(output):
         [os.remove(i) for i in tempfiles]
     else:
         raise Exception("samtools merge failed, temp files not deleted")
-
-
-@log_info
-def run_genotype(options):
-    """Genotype cells based on SNP counts
-
-    Perform DBSCAN clustering to identify clusters of
-    background, reference allele, alternate allele, and multiplet cells.
-    """
-    data = pd.read_table(options.infile)
-    gt = genotype.Genotype(data)
-    gt.transform_snps()
-    gt.filter_low_count(min_umi=options.min_umi)
-    if options.margin:
-        gt.detect_core_background(subsample=options.downsample)
-    if options.downsample is False:
-        gt.detect_total_background(eps=1,
-                             min_samples=10000,
-                             subsample=False,
-                             n_jobs=options.nproc)
-    else:
-        gt.detect_total_background(eps=options.eps_background,
-                             min_samples=options.min_samples_background,
-                             n_jobs=options.nproc)
-    gt.segment_cells()
-    gt.detect_cells(eps=options.eps_cells,
-                    min_samples=options.min_samples_cells,
-                    n_jobs=options.nproc)
-    if options.margin:
-        gt.detect_margin_cells()
-    gt.label_barcodes()
-    gt.labels[['cell_barcode', 'reference_count', 'alternate_count', 'label']].to_csv(options.outfile, sep='\t', index=False)
-    if options.plot is True:
-        from matplotlib.pyplot import savefig
-        pt = gt.plot_clusters()
-        plot_name = options.infile.split('.')[0] + ".png"
-        savefig(plot_name, dpi=500)
-    summary_name = options.outfile.split('.')[0] + '_summary.tsv'
-    gt.summarize().to_csv(summary_name, sep='\t', index=True)
