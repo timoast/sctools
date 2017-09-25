@@ -388,9 +388,9 @@ class SC:
     """
 
     def __init__(self):
-        self.barcodes = None
-        self.genes    = None
-        self.counts   = None
+        self.cells  = None
+        self.genes  = None
+        self.counts = None
 
     def read_10x(self, path):
         """Load the single-cell RNA-seq count data as a sparse matrix
@@ -458,6 +458,20 @@ class SC:
         rownames = self.genes
         df = pd.DataFrame(data=self.counts[0:n, 0:n].todense(), columns=self.cells[0:n], index=self.genes[0:n])
         return(df)
+
+    def copy(self):
+        """Return a copy of the object
+
+        Returns
+        -------
+        SC
+            A SC object
+        """
+        new_sc = SC()
+        new_sc.cells = self.cells
+        new_sc.genes = self.genes
+        new_sc.counts = self.counts.copy()
+        return(new_sc)
 
 
 def countedited(bam, edit, cells=None, nproc=1):
