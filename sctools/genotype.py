@@ -37,7 +37,7 @@ class Genotype:
             self.low_count       = None
             self.svm_accuracy_bg = None
             self.svm_accuracy_cells = None
-            self.snp_counts      = snp
+            self.snp_counts      = snp.copy()
             self.log_snps        = None
             self.barcodes        = snp.cell_barcode
             self.cells           = None
@@ -50,7 +50,7 @@ class Genotype:
             self.margin_ref      = None
             self.margin_alt      = None
             self.margin_multi    = None
-            self.labels          = snp
+            self.labels          = snp.copy()
 
             self.labels['label'] = "Unknown"
             self.labels['log_reference_count'] = self.labels['reference_count'].apply(lambda x: np.log10(x+1))
@@ -139,7 +139,7 @@ class Genotype:
         else:
             return(list(db_bg.labels_))
 
-    def detect_core_background(self, n=2000, eps=0.1, min_samples=300, subsample=True, n_jobs=1):
+    def detect_core_background(self, n=2000, eps=0.2, min_samples=300, subsample=True, n_jobs=1):
         """Detect core background cells using dbscan clustering
         Extrapolate labels to all cells using a support vector machine
         if cells are first downsampled.
@@ -350,7 +350,7 @@ class Genotype:
         self.labels.loc[(self.labels.cell_barcode.isin(self.alt_cells)), 'label'] = 'alt'
         self.labels.loc[(self.labels.cell_barcode.isin(self.multi_cells)), 'label'] = 'multi'
 
-    def detect_margin_cells(self, eps=0.3, min_samples=100, n_jobs=1):
+    def detect_margin_cells(self, eps=0.1, min_samples=100, n_jobs=1):
         """Detect cells on the margin between true cells and background droplets
 
         This should be run with a larger DBSCAN epsilon value than
