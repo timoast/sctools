@@ -470,7 +470,7 @@ def cluster_labels(cell_data):
     return(ref_cluster, np.int64(alt_cluster), multiplet_cluster)
 
 
-def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
+def run_genotyping(data, min_umi_total=20, min_umi_each=10, subsample=True, margin=False, nproc=1,
                    eps_background=0.5, eps_cells=0.2, min_drops_background=300,
                    min_drops_cells=100):
     """Genotype cells based on SNP counts
@@ -483,8 +483,10 @@ def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
     ----------
     data : pandas dataframe
         SNP UMI count data.
-    min_umi : int, optional
-        Minimum UMI count for each cell. Default is 10.
+    min_umi_total : int, optional
+        Combined UMI count cutoff for filtering cells. Default is 20.
+    min_umi_each : int, optional
+        Minimum UMI count for each genotype. Default is 10
     subsample : bool, optional
         Subsample cells when detecting background cluster and train
         a support vector machine to detect remaining cells. Default is True.
@@ -509,7 +511,7 @@ def run_genotyping(data, min_umi=10, subsample=True, margin=False, nproc=1,
         An object of class Genotype
     """
     gt = Genotype(data)
-    gt.filter_low_count(min_umi=min_umi)
+    gt.filter_low_count(min_umi_total=min_umi_total, min_umi_each=min_umi_each)
     gt.transform_snps()
     if margin:
         gt.detect_core_background(subsample=subsample)
