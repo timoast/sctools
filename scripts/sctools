@@ -52,7 +52,9 @@ parser_genotype.add_argument('--min_samples_background', help='Minimum number of
                              required=False, default=300)
 parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for cell clustering',
                              required=False, default=100)
-parser_genotype.add_argument('--min_umi', help='Minimum number of UMIs for a cell barcode to be entered into clustering steps (count)',
+parser_genotype.add_argument('--min_umi_total', help='Minimum total number of UMIs for a cell barcode to be entered into clustering steps (count)',
+                             required=False, default=20)
+parser_genotype.add_argument('--min_umi_each', help='Minimum number of UMIs for each genotype for a cell barcode to be entered into clustering steps (count)',
                              required=False, default=10)
 parser_genotype.add_argument('--margin', help='Detect droplets on the margin between background and cells',
                              required=False, default=False, action='store_true')

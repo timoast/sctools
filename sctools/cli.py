@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from sctools import sctools, genotype
 import pandas as pd
 import functools
+import time
 
 
 def log_info(func):
@@ -37,12 +38,13 @@ def run_genotyping(options):
     """
     data = pd.read_table(options.infile)
     gt = genotype.run_genotyping(data=data,
-                                 min_umi=options.min_umi,
+                                 min_umi_total=options.min_umi_total,
+                                 min_umi_each=options.min_umi_each,
                                  subsample=options.downsample,
                                  margin=options.margin,
                                  eps_background=options.eps_background, eps_cells=options.eps_cells,
-                                 min_samples_background=options.min_samples_background,
-                                 min_samples_cells=options.min_samples_cells)
+                                 min_drops_background=options.min_samples_background,
+                                 min_drops_cells=options.min_samples_cells)
     if options.plot:
         from matplotlib.pyplot import savefig
         pt = gt.plot_clusters()
