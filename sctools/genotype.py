@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn import cluster, svm
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
 class Genotype:
@@ -49,7 +50,6 @@ class Genotype:
             self.multi_cells     = None
             self.margin_ref      = None
             self.margin_alt      = None
-            self.margin_multi    = None
             self.labels          = snp.copy()
 
             self.labels['label'] = "Unknown"
@@ -139,7 +139,7 @@ class Genotype:
         else:
             return(list(db_bg.labels_))
 
-    def detect_core_background(self, n=2000, eps=0.2, min_samples=300, subsample=True, n_jobs=1):
+    def detect_core_background(self, n=2000, eps=0.3, min_samples=300, subsample=True, n_jobs=1):
         """Detect core background cells using dbscan clustering
         Extrapolate labels to all cells using a support vector machine
         if cells are first downsampled.
@@ -372,19 +372,15 @@ class Genotype:
         core_bg = self.log_snps.cell_barcode.isin(self.background_core)
         cell_data = self.log_snps[[not x for x in core_bg]].copy()
         cell_data['cell'] = clusters
-        ref, alt, multi = cluster_labels(cell_data)
+        ref, alt, _ = cluster_labels(cell_data)
         ref_cells = list(cell_data[clusters == ref]['cell_barcode'])
         alt_cells = list(cell_data[clusters == alt]['cell_barcode'])
-        multi_cells = list(cell_data[clusters == multi]['cell_barcode'])
 
         # intersect with barcodes labeled using smaller clustering radius
-        self.margin_ref = [x for x in ref_cells if x in self.background]
-        self.margin_alt = [x for x in alt_cells if x in self.background]
-        self.margin_multi = [x for x in multi_cells if x in self.background]
-
+        self.margin_ref = list(set(ref_cells) & set(self.background))
+        self.margin_alt = list(set(alt_cells) & set(self.background))
         self.labels.loc[(self.labels.cell_barcode.isin(self.margin_ref)), 'label'] = 'ref_margin'
         self.labels.loc[(self.labels.cell_barcode.isin(self.margin_alt)), 'label'] = 'alt_margin'
-        self.labels.loc[(self.labels.cell_barcode.isin(self.margin_multi)), 'label'] = 'multi_margin'
 
     def plot(self, title = "SNP genotyping", log_scale = True):
         """Plot cell genotyping results
@@ -401,7 +397,6 @@ class Genotype:
         figure
             A matplotlib figure object
         """
-        import matplotlib.pyplot as plt
         groups = self.labels.groupby('label')
         fig, ax = plt.subplots()
         if log_scale:
