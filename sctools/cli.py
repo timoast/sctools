@@ -51,7 +51,7 @@ def run_genotyping(options):
                                  min_drops_cells=options.min_samples_cells)
     if options.plot:
         from matplotlib.pyplot import savefig
-        pt = gt.plot_clusters()
+        pt = gt.plot()
         plot_name = options.sample_name + ".png"
         savefig(plot_name, dpi=500)
     if options.summarize:
