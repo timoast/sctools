@@ -50,10 +50,11 @@ def run_genotyping(options):
                                  min_drops_background=options.min_samples_background,
                                  min_drops_cells=options.min_samples_cells)
     if options.plot:
-        from matplotlib.pyplot import savefig
+        import matplotlib.pyplot as plt
         pt = gt.plot()
         plot_name = options.sample_name + ".png"
-        savefig(plot_name, dpi=500)
+        plt.savefig(plot_name, dpi=500)
+        plt.close(pt)
     if options.summarize:
         summary = gt.summarize()
         summary.to_csv(options.sample_name + "_summary.tsv", sep="\t", index=False)
