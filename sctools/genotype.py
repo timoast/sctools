@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from sklearn import cluster, svm
 from sklearn.model_selection import train_test_split
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -414,8 +416,7 @@ class Genotype:
             ax.set_ylabel("Alternate UMI counts")
             ax.set_xlabel("Reference UMI counts")
         ax.set_title(title)
-        plt.close()
-        return(fig)
+        return(ax)
 
     def summarize(self):
         """Count number of cells of each genotype and
