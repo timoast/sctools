@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from sklearn import cluster, svm
 from sklearn.model_selection import train_test_split
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -247,10 +249,10 @@ class Genotype:
         if percent_difference > cutoff:
             max_cells = min(len_upper, len_lower)
             if len_lower > max_cells:
-                downsample_data = lower_segment.head(max_cells)
+                downsample_data = lower_segment.sample(max_cells)
                 return(downsample_data.append(upper_segment))
             else:
-                downsample_data = upper_segment.head(max_cells)
+                downsample_data = upper_segment.sample(max_cells)
                 return(downsample_data.append(lower_segment))
         else:
             return(None)
@@ -350,7 +352,7 @@ class Genotype:
         self.labels.loc[(self.labels.cell_barcode.isin(self.alt_cells)), 'label'] = 'alt'
         self.labels.loc[(self.labels.cell_barcode.isin(self.multi_cells)), 'label'] = 'multi'
 
-    def detect_margin_cells(self, eps=0.1, min_samples=100, n_jobs=1):
+    def detect_margin_cells(self, eps=0.2, min_samples=100, n_jobs=1):
         """Detect cells on the margin between true cells and background droplets
 
         This should be run with a larger DBSCAN epsilon value than
