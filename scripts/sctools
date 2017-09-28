@@ -54,8 +54,8 @@ parser_genotype.add_argument('--max_difference', help='Maximum UMI count differe
                              required=False, default=0.2, type=float)
 parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background detection (default = 0.5)',
                              required=False, default=0.5, type=float)
-parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value for core background detection (default = 0.2)',
-                             required=False, default=0.2, type=float)
+parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value for core background detection (default = 0.3)',
+                             required=False, default=0.3, type=float)
 parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for cell clustering (default = 0.2)',
                              required=False, default=0.2, type=float)
 parser_genotype.add_argument('--eps_margin', help='DBSCAN epsilon value for background cell clustering (default = 0.1)',
