@@ -58,8 +58,8 @@ parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value
                              required=False, default=0.3, type=float)
 parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for cell clustering (default = 0.2)',
                              required=False, default=0.2, type=float)
-parser_genotype.add_argument('--eps_margin', help='DBSCAN epsilon value for background cell clustering (default = 0.1)',
-                             required=False, default=0.1, type=float)
+parser_genotype.add_argument('--eps_margin', help='DBSCAN epsilon value for margin cell clustering (default = 0.2)',
+                             required=False, default=0.2, type=float)
 parser_genotype.add_argument('--min_samples_background', help='Minimum number of cells in each cluster for background cell clustering (default = 300)',
                              required=False, default=300, type=int)
 parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for cell clustering (default = 100)',
