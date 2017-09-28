@@ -471,8 +471,8 @@ def cluster_labels(cell_data):
 
 
 def run_genotyping(data, min_umi_total=20, min_umi_each=10, subsample=True, margin=False, nproc=1,
-                   eps_background=0.5, eps_cells=0.2, min_drops_background=300,
-                   min_drops_cells=100):
+                   eps_background=0.5, eps_background_core=0.2, eps_cells=0.2, eps_margin=0.1,
+                   min_drops_background=300, min_drops_cells=100, max_difference=0.2):
     """Genotype cells based on SNP counts
 
     Performs iterative density-based clustering using the DBSCAN algorithm to detect
@@ -494,10 +494,16 @@ def run_genotyping(data, min_umi_total=20, min_umi_each=10, subsample=True, marg
         Detect cells on the border between background and real cells. Default is False.
     nproc : int, optional
         Number of processors. Default is 1, setting to -1 will use all cores.
+    max_difference : float, optional
+        Maximum UMI count difference between genotypes before applying downsampling to equalize UMI count distribution. Default is 0.2
     eps_background : float, optional
         Epsilon value passed to DBSCAN for detection of background cluster. Default is 0.5.
+    eps_background_core : float, optional
+        Epsilon value passed to DBSCAN for detection of core background cluster. Default is 0.2.
     eps_cells : float, optional
         Epsilon value passed to DBSCAN for detection of cell clusters. Default is 0.2.
+    eps_margin : float, optional
+        Epsilon value passed to DBSCAN for detection of margin cells. Default is 0.1.
     min_drops_background : int, optional
         Minimum number of barcodes per cluster allowed during detection of background cluster.
         Default is 300.
@@ -514,17 +520,13 @@ def run_genotyping(data, min_umi_total=20, min_umi_each=10, subsample=True, marg
     gt.filter_low_count(min_umi_total=min_umi_total, min_umi_each=min_umi_each)
     gt.transform_snps()
     if margin:
-        gt.detect_core_background(subsample=subsample)
-    if subsample is False:
-        gt.detect_total_background(eps=1, min_samples=10000,
-                                   subsample=False, n_jobs=nproc)
-    else:
-        gt.detect_total_background(eps=eps_background, min_samples=min_drops_background,
-                                   n_jobs=nproc)
-    gt.downsample_data = gt.segment_cells()
+        gt.detect_core_background(subsample=subsample, eps=eps_background_core)
+    gt.detect_total_background(eps=eps_background, min_samples=min_drops_background,
+                               n_jobs=nproc)
+    gt.downsample_data = gt.segment_cells(cutoff=max_difference)
     gt.detect_cells(eps=eps_cells,
                     min_samples=min_drops_cells,
                     n_jobs=nproc)
     if margin:
-        gt.detect_margin_cells()
+        gt.detect_margin_cells(eps=eps_margin)
     return(gt)

@@ -42,7 +42,11 @@ def run_genotyping(options):
                                  min_umi_each=options.min_umi_each,
                                  subsample=options.downsample,
                                  margin=options.margin,
-                                 eps_background=options.eps_background, eps_cells=options.eps_cells,
+                                 max_difference=options.max_difference,
+                                 eps_background=options.eps_background,
+                                 eps_background_core=options.eps_background_core,
+                                 eps_cells=options.eps_cells,
+                                 eps_margin=options.eps_margin,
                                  min_drops_background=options.min_samples_background,
                                  min_drops_cells=options.min_samples_cells)
     if options.plot:

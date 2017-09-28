@@ -46,8 +46,12 @@ parser_genotype.add_argument('-p', '--plot', help='Plot results', required=False
 parser_genotype.add_argument('--summarize', help='Summarize results and write to file', required=False, default=False, action='store_true')
 parser_genotype.add_argument('-d', '--downsample', help='Do not downsample cells before detecting background cluster',
                              required=False, default=True, action='store_false')
-parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.5)
-parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for background cell clustering', required=False, default=0.2)
+parser_genotype.add_argument('--max_difference', help='Maximum UMI count difference between genotypes before applying downsampling to equalize UMI count distribution. Default is 0.2',
+                             required=False, default=0.2)
+parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background detection. Default is 0.5.', required=False, default=0.5)
+parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value for core background detection. Default is 0.2.', required=False, default=0.2)
+parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for cell clustering. Default is 0.2.', required=False, default=0.2)
+parser_genotype.add_argument('--eps_margin', help='DBSCAN epsilon value for background cell clustering. Default is 0.1', required=False, default=0.1)
 parser_genotype.add_argument('--min_samples_background', help='Minimum number of cells in each cluster for background cell clustering',
                              required=False, default=300)
 parser_genotype.add_argument('--min_samples_cells', help='Minimum number of cells in each cluster for cell clustering',
