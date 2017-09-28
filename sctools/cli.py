@@ -54,7 +54,7 @@ def run_genotyping(options):
         pt = gt.plot()
         plot_name = options.sample_name + ".png"
         plt.savefig(plot_name, dpi=500)
-        plt.close(pt)
+        plt.close()
     if options.summarize:
         summary = gt.summarize()
         summary.to_csv(options.sample_name + "_summary.tsv", sep="\t", index=False)
