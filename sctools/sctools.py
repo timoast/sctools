@@ -533,7 +533,7 @@ def countsnps(bam, snp, cells=None, nproc=1):
     bamfile = pysam.AlignmentFile(bam)
     if bamfile.has_index() is True:
         bamfile.close()
-        data = genotype_cells(bam, snp, cells, options.nproc)
+        data = genotype_cells(bam, snp, cells, nproc)
         return(data)
     else:
         bamfile.close()
