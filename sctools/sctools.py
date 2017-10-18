@@ -473,6 +473,34 @@ class SC:
         new_sc.counts = self.counts.copy()
         return(new_sc)
 
+    def count_umi(self, axis=2):
+        """Count total UMIs per cell or gene
+
+        Parameters
+        ----------
+        axis : int, optional
+            Count UMIs per gene (1) or cell (2, default)
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe
+
+        Raises
+        ------
+        Exception
+            If axis is not 1 or 2
+        """
+        axis = int(axis)
+        counts = self.counts.sum(axis=axis)
+        if axis == 1:
+            dat = pd.DataFrame(counts, index=self.genes, columns=['count'])
+        elif axis == 2:
+            dat = pd.DataFrame(counts.tolist()[0], index=self.cells, columns=['count'])
+        else:
+            raise Exception("Incorrect axis provided")
+        return(dat)
+
 
 def countedited(bam, edit, cells=None, nproc=1):
     """Count edited RNA bases per transcript per cell in single-cell RNA data
