@@ -27,35 +27,38 @@ class Background:
         self.margin     = None
         self.labels     = None
 
-    def load_counts(self, umi):
+    def load_counts(self, umi, filter_low_count = False, min_umi = 100):
         """
         Load UMI counts for each cell barcode
 
         Parameters
         ----------
         umi
-            Pandas dataframe with 'umi_count' column and
+            Pandas dataframe with 'count' column and
             rownames (pandas index) set to cell barcodes
+        filter : bool, optional
+            Remove cell barcodes with very low UMI counts. Default is False
+        min_umi : int, optional
+            Minimum number of UMIs. Default is 100.
 
         Raises
         ------
         ValueError
             If `umi` does not have correct column names
         """
-        if set(['umi_count']).issubset(umi.columns):
-            self.data = umi[['umi_count']]
+        if set(['count']).issubset(umi.columns):
+            if filter:
+                self.data = umi[umi['count'] > min_umi]
+            else:
+                self.data = umi[['count']]
+            self.log_umi = self.data[['count']].apply(lambda x: np.log10(x+1))
             labels = self.data.copy()
             labels['cell_barcode'] = labels.index
             labels['label'] = 'unknown'
-            self.labels = lables
+            self.labels = labels
         else:
             raise(ValueError("Incorrect data structure provided: "
-                             "must contain umi_count column"))
-
-    def transform_umi(self):
-        """Applies log10(count+1) to each cell UMI count entry
-        """
-        self.log_umi = self.data[['umi_count']].apply(lambda x: np.log10(x+1))
+                             "must contain count column"))
 
     def dbscan_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
         """Performs DBSCAN density-based clustering to detect the backgound empty
@@ -84,22 +87,21 @@ class Background:
         list
             A list of cluster labels
         """
-        assert self.log_umi is not None, "Run Background.transform_umi() first"
         if (subsample is False )or (n > len(self.log_umi)):
             n = len(self.log_umi)
-        data = self.log_umi[['umi_count']].sample(n).as_matrix()
+        data = self.log_umi[['count']].sample(n).as_matrix()
         db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(data)
         if (subsample is True) and (n < len(self.log_umi)):
             train_x, test_x, train_y, test_y = train_test_split(data, db_bg.labels_, train_size = 0.7, test_size = 0.3)
             model = svm.SVC()
             model.fit(train_x, train_y)
             self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
-            clusters = model.predict(self.log_umi[['umi_count']].as_matrix())
+            clusters = model.predict(self.log_umi[['count']].as_matrix())
             return(list(clusters))
         else:
             return(list(db_bg.labels_))
 
-    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
+    def detect_background(self, n=2000, eps=0.2, min_samples=300, subsample=True, n_jobs=1):
         """Detect core background cells using dbscan clustering
         Extrapolate labels to all cells using a support vector machine
         if cells are first downsampled.
@@ -129,7 +131,7 @@ class Background:
         self.background = self.log_umi[bg_cells].index.tolist()
         self.labels.loc[(self.labels.cell_barcode.isin(self.background)), 'label'] = 'background'
 
-    def detect_margin(self, n=2000, eps=0.7, min_samples=300, subsample=True, n_jobs=1):
+    def detect_margin(self, n=2000, eps=0.4, min_samples=300, subsample=True, n_jobs=1):
         """Detect droplets on boundary between background and cell
         Extrapolate labels to all cells using a support vector machine
         if cells are first downsampled.
@@ -153,7 +155,7 @@ class Background:
             Should only be needed when setting `subsample` to False.
         """
         clusters = self.dbscan_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
-        all_bg = [x == 0 for x in clusters_margin]
+        all_bg = [x == 0 for x in clusters]
         margin_large = self.log_umi[all_bg].index.tolist()
         self.margin = np.setdiff1d(margin_large, self.background).tolist()
         self.cells = np.setdiff1d(self.data.index.tolist(), self.margin + self.background).tolist()
@@ -175,7 +177,29 @@ class Background:
         figure
             A matplotlib figure object
         """
-        return
+        # downsample
+        if 'background' in self.labels.label.tolist():
+            bg = self.labels.loc[lambda x: x.label == 'background', :]
+            bg = bg.sample(5000)
+            cells = self.labels.loc[lambda x: x.label != 'background', :]
+            dat = bg.append(cells)
+            dat = self.labels.sort_values("count")
+            dat['cell_number'] = range(0, len(dat))
+            dat['log_count'] = dat[['count']].apply(lambda x: np.log10(x+1))
+        else:
+            dat = self.labels.sample(20000).sort_values("count")
+            dat['cell_number'] = range(0, len(dat))
+            dat['log_count'] = dat[['count']].apply(lambda x: np.log10(x+1))
+
+        groups = dat.groupby('label')
+        fig, ax = plt.subplots()
+        for name, group in groups:
+            ax.plot(group.cell_number, group.log_count,
+                    marker='.', linestyle='', ms=2, label=name, alpha=1)
+        ax.legend()
+        ax.set_ylabel("UMI counts (log10 + 1)")
+        ax.set_xlabel("Cumulative number of barcodes")
+        return(ax)
 
     def summarize(self):
         """Count number of cells in each category (background, margin, cell)
