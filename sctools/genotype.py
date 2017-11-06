@@ -11,6 +11,187 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
+class Background:
+    """Detemine boundary between cells and background empty droplets
+
+    Performs density-based clustering on droplets based on total UMI count
+    """
+
+    def __init__(self):
+        """Initialize Background object
+        """
+        self.data       = None
+        self.log_umi    = None
+        self.cells      = None
+        self.background = None
+        self.margin     = None
+        self.labels     = None
+
+    def load_counts(self, umi):
+        """
+        Load UMI counts for each cell barcode
+
+        Parameters
+        ----------
+        umi
+            Pandas dataframe with 'umi_count' column and
+            rownames (pandas index) set to cell barcodes
+
+        Raises
+        ------
+        ValueError
+            If `umi` does not have correct column names
+        """
+        if set(['umi_count']).issubset(umi.columns):
+            self.data = umi[['umi_count']]
+            labels = self.data.copy()
+            labels['cell_barcode'] = labels.index
+            labels['label'] = 'unknown'
+            self.labels = lables
+        else:
+            raise(ValueError("Incorrect data structure provided: "
+                             "must contain umi_count column"))
+
+    def transform_umi(self):
+        """Applies log10(count+1) to each cell UMI count entry
+        """
+        self.log_umi = self.data[['umi_count']].apply(lambda x: np.log10(x+1))
+
+    def dbscan_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
+        """Performs DBSCAN density-based clustering to detect the backgound empty
+        droplet cluster
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of cells to select when downsampling data
+        eps : float, optional
+            Epsilon value for DBSCAN clustering. This is the local radius used for
+            expanding clusters. The larger the value, the larger each cluster will be.
+        min_samples : int, optional
+            Minimum number of cells in each cluster
+        subsample : Bool, optional
+            Subsample cells before detecting background cluster (much faster, much less memory used).
+            Default is to subsample to `n` cells and then extrapolate clustering information
+            to remaining cells by training a model. If setting subsample to False, the parameters
+            `min_sample` and `eps` should be set much higher (eg 10,000 and 1)
+        n_jobs : int, optional
+            Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
+            Should only be needed when setting `subsample` to False.
+
+        Returns
+        -------
+        list
+            A list of cluster labels
+        """
+        assert self.log_umi is not None, "Run Background.transform_umi() first"
+        if (subsample is False )or (n > len(self.log_umi)):
+            n = len(self.log_umi)
+        data = self.log_umi[['umi_count']].sample(n).as_matrix()
+        db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(data)
+        if (subsample is True) and (n < len(self.log_umi)):
+            train_x, test_x, train_y, test_y = train_test_split(data, db_bg.labels_, train_size = 0.7, test_size = 0.3)
+            model = svm.SVC()
+            model.fit(train_x, train_y)
+            self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
+            clusters = model.predict(self.log_umi[['umi_count']].as_matrix())
+            return(list(clusters))
+        else:
+            return(list(db_bg.labels_))
+
+    def detect_background(self, n=2000, eps=0.6, min_samples=300, subsample=True, n_jobs=1):
+        """Detect core background cells using dbscan clustering
+        Extrapolate labels to all cells using a support vector machine
+        if cells are first downsampled.
+
+        Sets self.background to list of cell barcodes
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of cells to select when downsampling data
+        eps : float, optional
+            Epsilon value for DBSCAN clustering. This is the local radius used for
+            expanding clusters. The larger the value, the larger each cluster will be.
+        min_samples : int, optional
+            Minimum number of cells in each cluster
+        subsample : Bool, optional
+            Subsample cells before detecting background cluster (much faster).
+            Default is to subsample to `n` cells and then extrapolate clustering information
+            to remaining cells by training a model. If setting subsample to False, the parameters
+            `min_sample` and `eps` should be set much higher (eg 10,000 and 1)
+        n_jobs : int, optional
+            Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
+            Should only be needed when setting `subsample` to False.
+        """
+        clusters = self.dbscan_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
+        bg_cells = [x == 0 for x in clusters]
+        self.background = self.log_umi[bg_cells].index.tolist()
+        self.labels.loc[(self.labels.cell_barcode.isin(self.background)), 'label'] = 'background'
+
+    def detect_margin(self, n=2000, eps=0.7, min_samples=300, subsample=True, n_jobs=1):
+        """Detect droplets on boundary between background and cell
+        Extrapolate labels to all cells using a support vector machine
+        if cells are first downsampled.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of cells to select when downsampling data
+        eps : float, optional
+            Epsilon value for DBSCAN clustering. This is the local radius used for
+            expanding clusters. The larger the value, the larger each cluster will be.
+        min_samples : int, optional
+            Minimum number of cells in each cluster
+        subsample : Bool, optional
+            Subsample cells before detecting background cluster (much faster).
+            Default is to subsample to `n` cells and then extrapolate clustering information
+            to remaining cells by training a model. If setting subsample to False, the parameters
+            `min_sample` and `eps` should be set much higher (eg 10,000 and 1)
+        n_jobs : int, optional
+            Number of cores to use for dbscan clustering. Default is 1. Setting to -1 will use all cores.
+            Should only be needed when setting `subsample` to False.
+        """
+        clusters = self.dbscan_background(n=n, eps=eps, min_samples=min_samples, subsample=subsample, n_jobs=n_jobs)
+        all_bg = [x == 0 for x in clusters_margin]
+        margin_large = self.log_umi[all_bg].index.tolist()
+        self.margin = np.setdiff1d(margin_large, self.background).tolist()
+        self.cells = np.setdiff1d(self.data.index.tolist(), self.margin + self.background).tolist()
+        self.labels.loc[(self.labels.cell_barcode.isin(self.margin)), 'label'] = 'margin'
+        self.labels.loc[(self.labels.cell_barcode.isin(self.cells)), 'label'] = 'cell'
+
+    def plot(self, title = "UMI counts", log_scale = True):
+        """Plot UMI clustering results
+
+        Parameters
+        ----------
+        title : str, optional
+            Title for the plot
+        log_scale : bool, optional
+            Plot UMI counts on a log10 scale
+
+        Returns
+        -------
+        figure
+            A matplotlib figure object
+        """
+        return
+
+    def summarize(self):
+        """Count number of cells in each category (background, margin, cell)
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe
+        """
+        return
+
+
 class Genotype:
     """Genotype each cell in single-cell RNA-seq based on relative SNP UMI counts
 
