@@ -76,3 +76,9 @@ def run_countedited(options):
     """
     data = sctools.countedited(bam=options.bam, edit=options.edit, cells=options.cells, nproc=options.nproc)
     sctools.save_edit_data(data, options.output)
+
+@log_info
+def run_replace(options):
+    """Wraps the sctools.replace function for use on the command line
+    """
+    replace.run_replace(genome=options.genome, snp=options.snp, output=options.output)

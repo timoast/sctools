@@ -54,8 +54,8 @@ parser_genotype.add_argument('--max_difference', help='Maximum UMI count differe
                              required=False, default=0.2, type=float)
 parser_genotype.add_argument('--eps_background', help='DBSCAN epsilon value for background detection (default = 0.5)',
                              required=False, default=0.5, type=float)
-parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value for core background detection (default = 0.3)',
-                             required=False, default=0.3, type=float)
+parser_genotype.add_argument('--eps_background_core', help='DBSCAN epsilon value for core background detection (default = 0.2)',
+                             required=False, default=0.2, type=float)
 parser_genotype.add_argument('--eps_cells', help='DBSCAN epsilon value for cell clustering (default = 0.2)',
                              required=False, default=0.2, type=float)
 parser_genotype.add_argument('--eps_margin', help='DBSCAN epsilon value for margin cell clustering (default = 0.1)',
@@ -71,6 +71,12 @@ parser_genotype.add_argument('--min_umi_each', help='Minimum number of UMIs for 
 parser_genotype.add_argument('--margin', help='Detect droplets on the margin between background and cells',
                              required=False, default=False, action='store_true')
 parser_genotype.set_defaults(func=cli.run_genotyping)
+
+parser_replace = subparsers.add_parser('replace', description='substitute SNPs into reference genome')
+parser_replace.add_argument('-g', '--genome', help='reference genome fasta file', required=True, type=str)
+parser_replace.add_argument('-s', '--snp', help='snp file in tsv format', required=True, type=str)
+parser_replace.add_argument('-o', '--outfile', help='output filename', required=True, type=str)
+parser_replace.set_defaults(func=cli.run_replace)
 
 options = parser.parse_args()
 options.func(options)
