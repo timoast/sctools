@@ -75,7 +75,7 @@ parser_genotype.set_defaults(func=cli.run_genotyping)
 parser_replace = subparsers.add_parser('replace', description='substitute SNPs into reference genome')
 parser_replace.add_argument('-g', '--genome', help='reference genome fasta file', required=True, type=str)
 parser_replace.add_argument('-s', '--snp', help='snp file in tsv format', required=True, type=str)
-parser_replace.add_argument('-o', '--outfile', help='output filename', required=True, type=str)
+parser_replace.add_argument('-o', '--output', help='output filename', required=True, type=str)
 parser_replace.set_defaults(func=cli.run_replace)
 
 options = parser.parse_args()

@@ -2,7 +2,7 @@
 #! /usr/bin/env python
 
 from __future__ import absolute_import
-from sctools import sctools, genotype
+from sctools import sctools, genotype, replace
 import pandas as pd
 import functools
 import time
@@ -81,4 +81,4 @@ def run_countedited(options):
 def run_replace(options):
     """Wraps the sctools.replace function for use on the command line
     """
-    replace.run_replace(genome=options.genome, snp=options.snp, output=options.output)
+    replace.run_replace(genome=options.genome, snp=options.snp, outfile=options.output)
