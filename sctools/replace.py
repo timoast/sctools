@@ -32,6 +32,13 @@ def produceString(key, dic):
     seq = re.sub("(.{60})", "\\1\n", seq, 0, re.DOTALL)  # 60 bases per line
     return string + seq + "\n"
 
+
+def naturalSort(l):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    return sorted(l, key = alphanum_key)
+
+
 def run_replace(genome, snp, outfile):
     """
     Replace reference genome bases with ambiguous base codes at
@@ -56,17 +63,16 @@ def run_replace(genome, snp, outfile):
 
     iupac = {
         'ag': 'r',
-        'ga': 'r',
         'ct': 'y',
-        'tc': 'y',
-        'gc': 's',
         'cg': 's',
         'at': 'w',
-        'ta': 'w',
         'gt': 'k',
-        'tg': 'k',
         'ac': 'm',
-        'ca': 'm'
+        'cgt': 'b',
+        'agt': 'd',
+        'act': 'h',
+        'acg': 'v',
+        'acgt': 'n'
         }
 
     if snp.endswith("gz"):
@@ -79,22 +85,16 @@ def run_replace(genome, snp, outfile):
         pos = int(line[1])
         ref = line[2]
         alt = line[3]
-        comb = (ref+alt).lower()
+        comb = ''.join(sorted((ref+alt).lower()))
         try:
             iupac[comb]
         except KeyError:
-            pass
+            raise Exception("Unknown base: {}".format(comb))
         else:
             ambig = iupac[comb]
             snpCorrect(chroms, chrom, pos, ref, ambig)
     infile.close()
 
     with open(outfile, "w") as outfile:
-        # to get chromsomes in proper order, need to write one-by-one
-        outfile.write(produceString("1", chroms))
-        outfile.write(produceString("2", chroms))
-        outfile.write(produceString("3", chroms))
-        outfile.write(produceString("4", chroms))
-        outfile.write(produceString("5", chroms))
-        outfile.write(produceString("Mt", chroms))
-        outfile.write(produceString("Pt", chroms))
+        for chromosome in naturalSort(chroms.keys()):
+            outfile.write(produceString(chromosome, chroms))
