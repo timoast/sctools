@@ -107,7 +107,7 @@ optional arguments:
 Edited RNA transcripts can be counted per editing position per cell using the `sctools countedited` command.
 
 ```
-$ sctools countedited -h    [master]
+$ sctools countedited -h
 usage: sctools countedited [-h] -b BAM -e EDIT -o OUTPUT [-c CELLS]
                               [-p NPROC]
 
@@ -126,6 +126,27 @@ optional arguments:
                         for. Can be gzip compressed (optional)
   -p NPROC, --nproc NPROC
                         Number of processors (default = 1)
+```
+
+### Replace SNP bases in reference genome
+
+Nucleotides in the reference genome can be replaced at SNP positions with the IUPAC code encoding both/all possible nucleotides using the 
+`sctools replace` command. 
+The reason for doing this is to decrease any reference-bias in aligning cDNA reads.
+
+```
+$ sctools replace -h 
+usage: sctools replace [-h] -g GENOME -s SNP -o OUTPUT
+
+substitute SNPs into reference genome
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -g GENOME, --genome GENOME
+                        reference genome fasta file
+  -s SNP, --snp SNP     snp file in tsv format
+  -o OUTPUT, --output OUTPUT
+                        output filename
 ```
 
 ## Import sctools as a python module
