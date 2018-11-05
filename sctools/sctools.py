@@ -208,7 +208,7 @@ def collapse_umi(cells):
     """
     collapsed_data = {}
     for cell_barcode, umi_set in cells.items():
-        for umi, genotypes in umi_set.items():
+        for _, genotypes in umi_set.items():
             if len(set(genotypes)) > 1:
                 pass
             else:
@@ -305,7 +305,7 @@ def count_edit_percent_at_postion(edit_chunk, bam, known_cells):
         else:
             for read in bamfile.fetch(chromosome, position, position + 1):
                 cell_barcode, umi = scan_tags(read.tags)
-                position_cell_index = str(cell_barcode)+":"+str(chromosome)+","+str(postion)
+                position_cell_index = str(cell_barcode)+":"+str(chromosome)+","+str(position)
                 if known_cells is None or cell_barcode in known_cells:
                     transcript_base = get_genotype(read.query_sequence, read.pos, position, read.cigar)
                     if transcript_base == ref:
@@ -454,8 +454,6 @@ class SC:
         max_len = min(len(self.cells), len(self.genes))
         if n > max_len:
             n = max_len
-        colnames = self.cells
-        rownames = self.genes
         df = pd.DataFrame(data=self.counts[0:n, 0:n].todense(), columns=self.cells[0:n], index=self.genes[0:n])
         return(df)
 
