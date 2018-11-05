@@ -588,6 +588,8 @@ class Genotype:
         self.margin_alt = list(set(alt_cells) & set(self.background))
         self.labels.loc[(self.labels.cell_barcode.isin(self.margin_ref)), 'label'] = 'ref_margin'
         self.labels.loc[(self.labels.cell_barcode.isin(self.margin_alt)), 'label'] = 'alt_margin'
+        self.labels.loc[(self.labels.label == 'background'), 'label'] = 'multi'
+        self.labels.loc[(self.labels.label == 'cell'), 'label'] = 'background'
 
     def plot(self, title = "SNP genotyping", log_scale = True):
         """Plot cell genotyping results
