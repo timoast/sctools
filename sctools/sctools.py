@@ -68,7 +68,7 @@ def find_chromosome_break(position, chromosomes, current_chrom):
         return find_chromosome_break(position, chromosomes, current_chrom + 1)
 
 
-def iterate_reads(intervals, bam, sam, output, cb):
+def iterate_reads(intervals, bam, sam, output, cb, trim_suffix):
     inputBam = pysam.AlignmentFile(bam, 'rb')
     ident = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     if sam:
@@ -79,8 +79,12 @@ def iterate_reads(intervals, bam, sam, output, cb):
         for r in inputBam.fetch(i[0], i[1], i[2]):
             cell_barcode, _ = scan_tags(r.tags)
             if cell_barcode is not None:
-                if cell_barcode[:-2] in cb:
-                    outputBam.write(r)
+                if trim_suffix:
+                    if cell_barcode[:-2] in cb:
+                        outputBam.write(r)
+                else:
+                    if cell_barcode in cb:
+                        outputBam.write(r)
     outputBam.close()
     inputBam.close()
     return output + ident
@@ -567,7 +571,7 @@ def countsnps(bam, snp, cells=None, nproc=1):
         exit()
 
 
-def filterbarcodes(cells, bam, output, sam=False, nproc=1):
+def filterbarcodes(cells, bam, output, sam=False, trim_suffix=True, nproc=1):
     """Filter reads based on input list of cell barcodes
 
     Copy BAM entries matching a list of cell barcodes to a new BAM file.
@@ -582,6 +586,8 @@ def filterbarcodes(cells, bam, output, sam=False, nproc=1):
         Name for output file.
     sam : bool, optional
         Output SAM format. Default is BAM format.
+    trim_suffix: bool, optional
+        Remove trailing 2 characters from cell barcode in bam file (sometimes needed to match 10x barcodes).
     nproc : int, optional
         Number of processors to use. Default is 1.
 
