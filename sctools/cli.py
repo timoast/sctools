@@ -28,7 +28,7 @@ def log_info(func):
 def run_filterbarcodes(options):
     """Wraps the sctools.filterbarcodes function for use on the command line
     """
-    sctools.filterbarcodes(cells=options.cells, bam=options.bam,
+    sctools.filterbarcodes(cells=options.cells, bam=options.bam, trim_suffix=options.trim_suffix,
                            output=options.output, sam=options.sam, nproc=options.nproc)
 
 
