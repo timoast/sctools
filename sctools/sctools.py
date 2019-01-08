@@ -617,7 +617,7 @@ def filterbarcodes(cells, bam, output, sam=False, trim_suffix=True, nproc=1):
     # map chunks to cores
     tempfiles = p.map_async(functools.partial(iterate_reads,
                             bam=bam, sam=sam, output=output,
-                            cb=cb), intervals.values()).get(9999999)
+                            cb=cb, trim_suffix=trim_suffix), intervals.values()).get(9999999)
 
     # merge the temporary bam files
     mergestring = 'samtools merge -@ ' + str(nproc) + ' ' + output + ' ' + ' '.join(tempfiles)
