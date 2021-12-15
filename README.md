@@ -2,6 +2,8 @@
 
 Tools for single-cell RNA-seq analysis
 
+🚨 **This package is no longer maintained. Some functionality has been moved to [sinto package](https://github.com/timoast/sinto).** 🚨
+
 ## Installation
 
 ```bash
