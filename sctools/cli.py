@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-#! /usr/bin/env python
-
 from __future__ import absolute_import
 from sctools import sctools, genotype, replace
 import pandas as pd
