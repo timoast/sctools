@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-
+import sys
 from argparse import ArgumentParser
 import pkg_resources
 from sctools import cli
@@ -79,5 +78,13 @@ parser_replace.add_argument('-s', '--snp', help='snp file in tsv format', requir
 parser_replace.add_argument('-o', '--output', help='output filename', required=True, type=str)
 parser_replace.set_defaults(func=cli.run_replace)
 
-options = parser.parse_args()
-options.func(options)
+def main():
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+    else:
+        options = parser.parse_args()
+        options.func(options)
+
+if __name__ == "__main__":
+    main()

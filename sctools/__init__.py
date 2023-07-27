@@ -1,4 +1,2 @@
-
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+import importlib.metadata
+__version__ = importlib.metadata.version('sctools')

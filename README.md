@@ -9,8 +9,8 @@ Tools for single-cell RNA-seq analysis
 ```bash
 git clone https://github.com/timoast/sctools.git
 cd sctools
-pip install -r requirements.txt
-python setup.py install
+python -m build
+pip install .
 ```
 
 ## Features
