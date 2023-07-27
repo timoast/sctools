@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-#! /usr/bin/env python
-
 from __future__ import division
 import numpy as np
 import pandas as pd
@@ -89,14 +86,14 @@ class Background:
         """
         if (subsample is False )or (n > len(self.log_umi)):
             n = len(self.log_umi)
-        data = self.log_umi[['count']].sample(n).as_matrix()
+        data = self.log_umi[['count']].sample(n).to_numpy()
         db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(data)
         if (subsample is True) and (n < len(self.log_umi)):
             train_x, test_x, train_y, test_y = train_test_split(data, db_bg.labels_, train_size = 0.7, test_size = 0.3)
             model = svm.SVC()
             model.fit(train_x, train_y)
             self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
-            clusters = model.predict(self.log_umi[['count']].as_matrix())
+            clusters = model.predict(self.log_umi[['count']].to_numpy())
             return(list(clusters))
         else:
             return(list(db_bg.labels_))
@@ -182,7 +179,7 @@ class Background:
             bg = self.labels.loc[lambda x: x.label == 'background', :]
             bg = bg.sample(5000)
             cells = self.labels.loc[lambda x: x.label != 'background', :]
-            dat = bg.append(cells)
+            dat = pd.concat([bg, cells])
             dat = self.labels.sort_values("count")
             dat['cell_number'] = range(0, len(dat))
             dat['log_count'] = dat[['count']].apply(lambda x: np.log10(x+1))
@@ -334,14 +331,14 @@ class Genotype:
         assert self.log_snps is not None, "Run genotype.transform_snps() first"
         if (subsample is False )or (n > len(self.log_snps)):
             n = len(self.log_snps)
-        cells = self.log_snps[['reference_count', 'alternate_count']].sample(n).as_matrix()
+        cells = self.log_snps[['reference_count', 'alternate_count']].sample(n).to_numpy()
         db_bg = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(cells)
         if (subsample is True) and (n < len(self.log_snps)):
             train_x, test_x, train_y, test_y = train_test_split(cells, db_bg.labels_, train_size = 0.7, test_size = 0.3)
             model = svm.SVC()
             model.fit(train_x, train_y)
             self.svm_accuracy_bg = sum(model.predict(test_x) == test_y) / len(test_y)
-            clusters = model.predict(self.log_snps[['reference_count', 'alternate_count']].as_matrix())
+            clusters = model.predict(self.log_snps[['reference_count', 'alternate_count']].to_numpy())
             return(list(clusters))
         else:
             return(list(db_bg.labels_))
@@ -445,7 +442,7 @@ class Genotype:
             cells_use = self.log_snps[[not x for x in bg]].copy()
 
         bg_mean_ref, bg_mean_alt = np.mean(bg_cells.reference_count), np.mean(bg_cells.alternate_count)
-        yintercept = bg_mean_alt / bg_mean_ref
+        yintercept = abs(bg_mean_alt - bg_mean_ref)
         upper_segment = cells_use[cells_use.alternate_count > (cells_use.reference_count + yintercept)]
         lower_segment = cells_use[cells_use.alternate_count <= (cells_use.reference_count + yintercept)]
         difference = abs(len(upper_segment) - len(lower_segment))
@@ -455,10 +452,10 @@ class Genotype:
             max_cells = min(len_upper, len_lower)
             if len_lower > max_cells:
                 downsample_data = lower_segment.sample(max_cells)
-                return(downsample_data.append(upper_segment))
+                return(pd.concat([downsample_data, upper_segment]))
             else:
                 downsample_data = upper_segment.sample(max_cells)
-                return(downsample_data.append(lower_segment))
+                return(pd.concat([downsample_data, lower_segment]))
         else:
             return(None)
 
@@ -497,7 +494,7 @@ class Genotype:
             cells_use = self.downsample_data.copy()
         else:
             cells_use = self.cells.copy()
-        cell_data = cells_use[['reference_count', 'alternate_count']].as_matrix()
+        cell_data = cells_use[['reference_count', 'alternate_count']].to_numpy()
         db_cells = cluster.DBSCAN(eps=eps, min_samples=min_samples, n_jobs=n_jobs).fit(cell_data)
         # need to extrapolate clustering results if downsampled
         if (self.downsample_data is not None) and (force_full is False):
@@ -513,9 +510,9 @@ class Genotype:
             if core_bg:
                 bg = self.log_snps.cell_barcode.isin(self.background_core)
                 cells = self.log_snps[[not x for x in bg]]
-                cells = cells[['reference_count', 'alternate_count']].as_matrix()
+                cells = cells[['reference_count', 'alternate_count']].to_numpy()
             else:
-                cells = self.cells[['reference_count', 'alternate_count']].as_matrix()
+                cells = self.cells[['reference_count', 'alternate_count']].to_numpy()
             clusters = model.predict(cells)
             return(list(clusters))
         else:
@@ -543,7 +540,7 @@ class Genotype:
         lookup = {ref: 'ref', alt: 'alt', multi: 'multi'}
         col = cell_data.cell
         cell_data['label'] = [lookup[x] for x in list(col)]
-        means = cell_data.groupby('cell').aggregate(np.mean)
+        means = cell_data[['reference_count', 'alternate_count', 'cell']].groupby('cell').aggregate(np.mean)
         cell_data.loc[(cell_data['label'] == 'multi') & (cell_data['alternate_count'] \
                         < means['reference_count'][alt]), 'label'] = 'background'
         cell_data.loc[(cell_data['label'] == 'multi') & (cell_data['reference_count'] \
@@ -666,7 +663,7 @@ def cluster_labels(cell_data):
         reference cluster number, alternate cluster number, multiplet cluster number
     """
     multiplet_cluster = np.int64(-1)  # multiplet cluster should always be -1
-    means = cell_data[cell_data.cell != -1].groupby('cell').aggregate(np.mean)
+    means = cell_data[cell_data.cell != -1].drop(columns='cell_barcode').groupby('cell').aggregate(np.mean)
     assert len(means.index) == 2, "{} cell clusters detected (should be 2)".format(len(means.index))
     ref_cluster = means['reference_count'].argmax()
     mean_diff = abs(means['reference_count'] - means['alternate_count'])
